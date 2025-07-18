@@ -1,165 +1,251 @@
-import { useState, useEffect, useCallback } from 'react';
 
-// Hook pour gérer le stockage des courriers avec synchronisation
-export function useCourrierStorage(type) {
-  const [courriers, setCourriers] = useState([]);
-  const [loading, setLoading] = useState(true);
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
+import { useState, useRef, useEffect } from 'react';
+import CourrierForm from '../components/CourrierForm.jsx';
+import MailTable from '../components/MailTable';
+import CourrierDetailModal from '../components/CourrierDetailModal';
+import { useToast } from '../components/ToastContainer';
+import { useCourrierStorage } from '../hooks/useCourrierStorage';
+import LoadingSpinner from '../components/LoadingSpinner';
 
-  const storageKey = type === 'ARRIVE' ? 'nbh_courriers_arrive' : 'nbh_courriers_depart';
+export default function CourrierArrive() {
+  const router = useRouter();
+  const [showForm, setShowForm] = useState(false);
+  const formRef = useRef(null);
+  const [search, setSearch] = useState('');
+  const { addToast } = useToast();
+  const containerRef = useRef(null);
+  const [selectedMail, setSelectedMail] = useState(null);
+  const [modalType, setModalType] = useState(null);
+  const [lastAddedId, setLastAddedId] = useState(null);
 
-  // Charger les courriers depuis localStorage
-  const loadCourriers = useCallback(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      const parsed = saved ? JSON.parse(saved) : [];
-      setCourriers(parsed);
-    } catch (error) {
-      console.error('Erreur lors du chargement des courriers:', error);
-      setCourriers([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [storageKey]);
-
-  // Sauvegarder dans localStorage avec synchronisation
-  const saveCourriers = useCallback((newCourriers) => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(newCourriers));
-      setCourriers(newCourriers);
-      
-      // Déclencher l'événement de synchronisation globale
-      window.dispatchEvent(new CustomEvent('courriersUpdated', {
-        detail: { type, action: 'update', data: newCourriers }
-      }));
-      
-      // Déclencher aussi l'événement storage pour la synchronisation entre onglets
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: storageKey,
-        newValue: JSON.stringify(newCourriers),
-        oldValue: localStorage.getItem(storageKey)
-      }));
-    } catch (error) {
-      console.error('Erreur lors de la sauvegarde:', error);
-      throw new Error('Impossible de sauvegarder les données');
-    }
-  }, [storageKey, type]);
-
-  // Ajouter un courrier
-  const addCourrier = useCallback((newCourrier) => {
-    // Générer un numéro automatique si pas fourni
-    let numeroToUse = newCourrier.numero;
-    if (!numeroToUse) {
-      const prefix = type === 'ARRIVE' ? 'ARR-' : 'DEP-';
-      const prefixPattern = new RegExp(`^${prefix.replace('-', '\\-')}\\d{5}$`);
-      
-      const existingNumbers = courriers
-        .map(c => c.numero)
-        .filter(num => num && prefixPattern.test(num))
-        .map(num => parseInt(num.replace(prefix, '')))
-        .filter(num => !isNaN(num));
-
-      const nextNumber = existingNumbers.length > 0 
-        ? Math.max(...existingNumbers) + 1 
-        : 1;
-
-      numeroToUse = prefix + nextNumber.toString().padStart(5, '0');
-    }
-    
-    const courrierWithId = {
-      ...newCourrier,
-      numero: numeroToUse,
-      id: Date.now() + Math.random(), // ID unique
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      type
-    };
-    
-    const updatedCourriers = [courrierWithId, ...courriers];
-    saveCourriers(updatedCourriers);
-    return courrierWithId;
-  }, [courriers, saveCourriers, type]);
-
-  // Mettre à jour un courrier
-  const updateCourrier = useCallback((id, updates) => {
-    const updatedCourriers = courriers.map(courrier =>
-      courrier.id === id
-        ? { ...courrier, ...updates, updatedAt: new Date().toISOString() }
-        : courrier
-    );
-    saveCourriers(updatedCourriers);
-    return updatedCourriers.find(c => c.id === id);
-  }, [courriers, saveCourriers]);
-
-  // Mettre à jour uniquement le statut
-  const updateStatus = useCallback((id, newStatus) => {
-    return updateCourrier(id, { statut: newStatus });
-  }, [updateCourrier]);
-
-  // Supprimer un courrier
-  const deleteCourrier = useCallback((id) => {
-    const updatedCourriers = courriers.filter(courrier => courrier.id !== id);
-    saveCourriers(updatedCourriers);
-    return true;
-  }, [courriers, saveCourriers]);
-
-  // Obtenir un courrier par ID
-  const getCourrierById = useCallback((id) => {
-    return courriers.find(courrier => courrier.id === id);
-  }, [courriers]);
-
-  // Écouter les événements de synchronisation
+  // Empêcher les redirections automatiques
   useEffect(() => {
-    const handleStorageUpdate = (event) => {
-      // Synchronisation entre onglets
-      if (event.key === storageKey) {
-        try {
-          const newData = event.newValue ? JSON.parse(event.newValue) : [];
-          setCourriers(newData);
-        } catch (error) {
-          console.error('Erreur synchronisation storage:', error);
-        }
+    // Forcer le maintien sur la page courante
+    const currentPath = '/courrier-arrive';
+    if (router.pathname !== currentPath) {
+      router.replace(currentPath);
+    }
+    
+    // Empêcher les navigations non intentionnelles
+    const preventUnwantedNavigation = (url) => {
+      if (url !== currentPath && router.pathname === currentPath) {
+        // Annuler la navigation si elle n'est pas intentionnelle
+        return false;
       }
     };
-
-    const handleCourrierUpdate = (event) => {
-      // Synchronisation interne
-      if (event.detail?.type === type || !event.detail?.type) {
-        loadCourriers();
-      }
-    };
-
-    window.addEventListener('storage', handleStorageUpdate);
-    window.addEventListener('courriersUpdated', handleCourrierUpdate);
-
+    
+    router.events.on('routeChangeStart', preventUnwantedNavigation);
+    
     return () => {
-      window.removeEventListener('storage', handleStorageUpdate);
-      window.removeEventListener('courriersUpdated', handleCourrierUpdate);
+      router.events.off('routeChangeStart', preventUnwantedNavigation);
     };
-  }, [loadCourriers, type, storageKey]);
+  }, [router]);
 
-  // Charger au montage
-  useEffect(() => {
-    loadCourriers();
-  }, [loadCourriers]);
+  // Utiliser le hook de stockage
+  const { 
+    courriers: mails, 
+    loading, 
+    addCourrier, 
+    updateStatus, 
+    deleteCourrier 
+  } = useCourrierStorage('ARRIVE');
 
-  // Statistiques
-  const stats = {
-    total: courriers.length,
-    enAttente: courriers.filter(c => c.statut === 'En attente').length,
-    enCours: courriers.filter(c => c.statut === 'En cours').length,
-    traites: courriers.filter(c => c.statut === 'Traité').length,
-    archives: courriers.filter(c => c.statut === 'Archivé').length
+  const handleAddMail = (mail) => {
+    try {
+      const newMail = addCourrier(mail);
+      setLastAddedId(newMail.id);
+      setShowForm(false);
+      addToast('✅ Courrier arrivé enregistré avec succès !', 'success');
+      
+      // Scroll vers le nouveau courrier
+      setTimeout(() => {
+        const newRow = document.querySelector(`[data-courrier-id="${newMail.id}"]`);
+        if (newRow) {
+          newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      
+      return newMail;
+    } catch (error) {
+      addToast('❌ Erreur lors de l\'enregistrement du courrier', 'error');
+      throw error;
+    }
   };
 
-  return {
-    courriers,
-    loading,
-    stats,
-    addCourrier,
-    updateCourrier,
-    updateStatus,
-    deleteCourrier,
-    getCourrierById,
-    refreshCourriers: loadCourriers
+  const handleRemove = (id) => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce courrier ?')) {
+      try {
+        deleteCourrier(id);
+        addToast('🗑️ Courrier supprimé avec succès', 'success');
+      } catch (error) {
+        addToast('❌ Erreur lors de la suppression', 'error');
+      }
+    }
   };
+
+  const handleView = (mail) => {
+    // Empêcher toute navigation
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    setSelectedMail(mail);
+    setModalType('view');
+  };
+
+  const handleEdit = (mail) => {
+    // Empêcher toute navigation
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    setSelectedMail(mail);
+    setModalType('edit');
+  };
+
+  const handleCloseModal = () => {
+    setSelectedMail(null);
+    setModalType(null);
+  };
+
+  const handleStatusUpdate = async (id, newStatus) => {
+    try {
+      const updatedCourrier = updateStatus(id, newStatus);
+      if (updatedCourrier) {
+        addToast(`📋 Statut mis à jour : ${newStatus}`, 'success');
+        // Mettre à jour la modale si elle est ouverte
+        if (selectedMail && selectedMail.id === id) {
+      }
+    } catch (error) {
+      addToast('❌ Erreur lors de la mise à jour du statut', 'error');
+    }
+  };
+
+  const handleUpdateMail = (updatedMail) => {
+    try {
+      updateCourrier(updatedMail.id, updatedMail);
+      addToast('✏️ Courrier modifié avec succès', 'success');
+      handleCloseModal();
+    } catch (error) {
+      addToast('❌ Erreur lors de la modification', 'error');
+    }
+  };
+
+  const filteredMails = mails.filter(mail => {
+    const q = search.toLowerCase();
+    return (
+      (mail.objet || '').toLowerCase().includes(q) ||
+      (mail.expediteur || '').toLowerCase().includes(q) ||
+      (mail.destinataire || '').toLowerCase().includes(q)
+    );
+  });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-main">
+        <LoadingSpinner 
+          size="lg" 
+          text="Chargement des courriers arrivés..." 
+          color="primary"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="relative w-full h-[100dvh] flex flex-col bg-main text-main">
+      {/* Titre avec logo */}
+      <div className="px-4 pt-4 pb-2">
+        <h1 className="text-2xl font-bold text-[#15514f] flex items-center gap-3">
+          <span className="text-3xl">📥</span>
+          Courrier Arrivée
+        </h1>
+      </div>
+
+      {/* Barre d'outils avec recherche, tri et ajouter */}
+      <div className="flex items-center gap-4 mb-4 px-4">
+        <input
+          type="text"
+          placeholder="Rechercher par objet, expéditeur..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 px-4 py-3 bg-[#FCFCFC] border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#15514f] shadow-sm"
+        />
+        <select className="px-4 py-3 bg-[#FCFCFC] border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#15514f] shadow-sm min-w-[140px]">
+          <option value="">Trier par</option>
+          <option value="date">Date</option>
+          <option value="expediteur">Expéditeur</option>
+          <option value="objet">Objet</option>
+          <option value="statut">Statut</option>
+        </select>
+        <button
+          onClick={() => setShowForm(f => !f)}
+          className="px-6 py-3 bg-[#15514f] text-white rounded-lg hover:bg-[#0f3e3c] transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm"
+        >
+          <span>➕</span>
+          Ajouter un nouveau courrier arrivé
+        </button>
+      </div>
+
+      {/* Formulaire réduit */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-2">
+          <div className="w-full max-w-md bg-[#FCFCFC] rounded-xl shadow-lg overflow-y-auto border border-primary" style={{ minHeight: '250px', maxHeight: '80vh' }}>
+            <div
+              tabIndex={-1}
+              ref={formRef}
+              aria-label="Formulaire d'ajout de courrier"
+              className="p-3"
+            >
+              <CourrierForm 
+                type="ARRIVE" 
+                onClose={() => setShowForm(false)} 
+                onAddMail={handleAddMail} 
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal vue */}
+      {modalType === 'view' && selectedMail && (
+        <CourrierDetailModal 
+          courrier={selectedMail} 
+          onClose={handleCloseModal} 
+          onStatusUpdate={handleStatusUpdate}
+          type="ARRIVE"
+        />
+      )}
+
+      {/* Modal édition */}
+      {modalType === 'edit' && selectedMail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md bg-[#FCFCFC] rounded-xl shadow-lg p-4 overflow-y-auto border border-primary relative" style={{ minHeight: '320px', maxHeight: '85vh' }}>
+            <button onClick={handleCloseModal} className="absolute top-2 right-2 text-gray-600 hover:text-primary text-xl">✕</button>
+            <h2 className="text-lg font-bold mb-4 text-primary">Éditer le courrier</h2>
+            <CourrierForm
+              type="ARRIVE"
+              onClose={handleCloseModal}
+              onAddMail={handleUpdateMail}
+              initialValues={selectedMail}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Tableau */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-4">
+        <MailTable
+          mails={filteredMails}
+          onRemove={handleRemove}
+          search={search}
+          setSearch={setSearch}
+          onView={handleView}
+          onEdit={handleEdit}
+          lastAddedId={lastAddedId}
+          onStatusUpdate={handleStatusUpdate}
+        />
+      </div>
+    </div>
+  );
 }

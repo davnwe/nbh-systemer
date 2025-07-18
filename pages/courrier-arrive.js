@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useState, useRef, useEffect } from 'react';
@@ -22,64 +21,25 @@ export default function CourrierArrive() {
 
   // Empêcher les redirections automatiques
   useEffect(() => {
-    // Empêcher toute navigation automatique vers l'accueil
-    const preventNavigation = (e) => {
-      if (e.target?.href === '/' || e.target?.pathname === '/') {
-        e.preventDefault();
-        e.stopPropagation();
+    // Forcer le maintien sur la page courante
+    const currentPath = '/courrier-arrive';
+    if (router.pathname !== currentPath) {
+      router.replace(currentPath);
+    }
+    
+    // Empêcher les navigations non intentionnelles
+    const preventUnwantedNavigation = (url) => {
+      if (url !== currentPath && router.pathname === currentPath) {
+        // Annuler la navigation si elle n'est pas intentionnelle
         return false;
       }
     };
     
-    // Empêcher les clics sur les liens vers l'accueil
-    document.addEventListener('click', preventNavigation, true);
+    router.events.on('routeChangeStart', preventUnwantedNavigation);
     
-    // Empêcher les changements de route non désirés
-    const handleRouteChange = (url) => {
-      if (url === '/' && router.pathname === '/courrier-arrive') {
-        router.replace('/courrier-arrive');
-        return false;
-      }
     };
-    
-    router.events.on('routeChangeStart', handleRouteChange);
-    
-    return () => {
-      document.removeEventListener('click', preventNavigation, true);
-      router.events.off('routeChangeStart', handleRouteChange);
-    };
-  }, [router]);
-
-  // Utiliser le hook de stockage
-  const { 
-    courriers: mails, 
-    loading, 
-    addCourrier, 
-    updateStatus, 
-    deleteCourrier 
-  } = useCourrierStorage('ARRIVE');
-
-  const handleAddMail = (mail) => {
-    try {
-      const newMail = addCourrier(mail);
       setLastAddedId(newMail.id);
       setShowForm(false);
-      addToast('✅ Courrier arrivé enregistré avec succès !', 'success');
-      
-      // Scroll vers le nouveau courrier après un court délai
-      setTimeout(() => {
-        const newRow = document.querySelector(`[data-courrier-id="${newMail.id}"]`);
-        if (newRow) {
-          newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          newRow.classList.add('animate-pulse');
-          setTimeout(() => newRow.classList.remove('animate-pulse'), 2000);
-        }
-      }, 100);
-      
-      // Empêcher toute redirection
-      // Forcer le maintien sur la page courante
-      window.history.replaceState(null, '', '/courrier-arrive');
-      
       return newMail;
     } catch (error) {
       addToast('❌ Erreur lors de l\'enregistrement du courrier', 'error');
@@ -99,11 +59,35 @@ export default function CourrierArrive() {
   };
 
   const handleView = (mail) => {
+    // Empêcher toute navigation
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    // Empêcher toute navigation
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    // Empêcher toute navigation
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
     setSelectedMail(mail);
     setModalType('view');
   };
 
   const handleEdit = (mail) => {
+    // Empêcher toute navigation
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    // Empêcher toute navigation
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    // Empêcher toute navigation
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
     setSelectedMail(mail);
     setModalType('edit');
   };
@@ -118,6 +102,12 @@ export default function CourrierArrive() {
       const updatedCourrier = updateStatus(id, newStatus);
       if (updatedCourrier) {
         addToast(`📋 Statut mis à jour : ${newStatus}`, 'success');
+        // Mettre à jour la modale si elle est ouverte
+        if (selectedMail && selectedMail.id === id) {
+        // Mettre à jour la modale si elle est ouverte
+        if (selectedMail && selectedMail.id === id) {
+        // Mettre à jour la modale si elle est ouverte
+        if (selectedMail && selectedMail.id === id) {
       }
     } catch (error) {
       addToast('❌ Erreur lors de la mise à jour du statut', 'error');
@@ -126,11 +116,16 @@ export default function CourrierArrive() {
 
   const handleUpdateMail = (updatedMail) => {
     try {
-      updateCourrier(updatedMail.id, updatedMail);
+      const result = updateCourrier(updatedMail.id, updatedMail);
+      if (!result) {
+        throw new Error('Échec de la mise à jour');
+      }
       addToast('✏️ Courrier modifié avec succès', 'success');
       handleCloseModal();
+      return result;
     } catch (error) {
       addToast('❌ Erreur lors de la modification', 'error');
+      return false;
     }
   };
 

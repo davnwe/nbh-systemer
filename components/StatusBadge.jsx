@@ -1,133 +1,251 @@
-import { useState } from 'react';
 
-const STATUS_OPTIONS = [
-  'En attente',
-  'En cours',
-  'Traité',
-  'Archivé',
-  'Rejeté',
-  'Nouveau'
-];
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
+import { useState, useRef, useEffect } from 'react';
+import CourrierForm from '../components/CourrierForm.jsx';
+import MailTable from '../components/MailTable';
+import CourrierDetailModal from '../components/CourrierDetailModal';
+import { useToast } from '../components/ToastContainer';
+import { useCourrierStorage } from '../hooks/useCourrierStorage';
+import LoadingSpinner from '../components/LoadingSpinner';
 
-const STATUS_STYLES = {
-  'en attente': 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200',
-  'en cours': 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200',
-  'traité': 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200',
-  'archivé': 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200',
-  'rejeté': 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200',
-  'nouveau': 'bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200'
-};
+export default function CourrierArrive() {
+  const router = useRouter();
+  const [showForm, setShowForm] = useState(false);
+  const formRef = useRef(null);
+  const [search, setSearch] = useState('');
+  const { addToast } = useToast();
+  const containerRef = useRef(null);
+  const [selectedMail, setSelectedMail] = useState(null);
+  const [modalType, setModalType] = useState(null);
+  const [lastAddedId, setLastAddedId] = useState(null);
 
-export default function StatusBadge({ 
-  status, 
-  onStatusChange, 
-  disabled = false,
-  size = 'sm' 
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
+  // Empêcher les redirections automatiques
+  useEffect(() => {
+    // Forcer le maintien sur la page courante
+    const currentPath = '/courrier-arrive';
+    if (router.pathname !== currentPath) {
+      router.replace(currentPath);
+    }
+    
+    // Empêcher les navigations non intentionnelles
+    const preventUnwantedNavigation = (url) => {
+      if (url !== currentPath && router.pathname === currentPath) {
+        // Annuler la navigation si elle n'est pas intentionnelle
+        return false;
+      }
+    };
+    
+    router.events.on('routeChangeStart', preventUnwantedNavigation);
+    
+    return () => {
+      router.events.off('routeChangeStart', preventUnwantedNavigation);
+    };
+  }, [router]);
 
-  const currentStatus = status || 'En attente';
-  const statusKey = currentStatus.toLowerCase();
-  const statusClass = STATUS_STYLES[statusKey] || STATUS_STYLES['en attente'];
+  // Utiliser le hook de stockage
+  const { 
+    courriers: mails, 
+    loading, 
+    addCourrier, 
+    updateStatus, 
+    deleteCourrier 
+  } = useCourrierStorage('ARRIVE');
 
-  const handleStatusSelect = async (newStatus) => {
-    if (newStatus === currentStatus || disabled) return;
-
-    setIsUpdating(true);
+  const handleAddMail = (mail) => {
     try {
-      await onStatusChange(newStatus);
-      setIsOpen(false);
+      const newMail = addCourrier(mail);
+      setLastAddedId(newMail.id);
+      setShowForm(false);
+      addToast('✅ Courrier arrivé enregistré avec succès !', 'success');
+      
+      // Scroll vers le nouveau courrier
+      setTimeout(() => {
+        const newRow = document.querySelector(`[data-courrier-id="${newMail.id}"]`);
+        if (newRow) {
+          newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      
+      return newMail;
     } catch (error) {
-      console.error('Erreur lors de la mise à jour du statut:', error);
-    } finally {
-      setIsUpdating(false);
+      addToast('❌ Erreur lors de l\'enregistrement du courrier', 'error');
+      throw error;
     }
   };
 
-  const sizeClasses = {
-    sm: 'px-3 py-1 text-sm',
-    md: 'px-4 py-2 text-base',
-    lg: 'px-5 py-3 text-lg'
+  const handleRemove = (id) => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce courrier ?')) {
+      try {
+        deleteCourrier(id);
+        addToast('🗑️ Courrier supprimé avec succès', 'success');
+      } catch (error) {
+        addToast('❌ Erreur lors de la suppression', 'error');
+      }
+    }
   };
 
-  if (disabled) {
+  const handleView = (mail) => {
+    // Empêcher toute navigation
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    setSelectedMail(mail);
+    setModalType('view');
+  };
+
+  const handleEdit = (mail) => {
+    // Empêcher toute navigation
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    setSelectedMail(mail);
+    setModalType('edit');
+  };
+
+  const handleCloseModal = () => {
+    setSelectedMail(null);
+    setModalType(null);
+  };
+
+  const handleStatusUpdate = async (id, newStatus) => {
+    try {
+      const updatedCourrier = updateStatus(id, newStatus);
+      if (updatedCourrier) {
+        addToast(`📋 Statut mis à jour : ${newStatus}`, 'success');
+        // Mettre à jour la modale si elle est ouverte
+        if (selectedMail && selectedMail.id === id) {
+      }
+    } catch (error) {
+      addToast('❌ Erreur lors de la mise à jour du statut', 'error');
+    }
+  };
+
+  const handleUpdateMail = (updatedMail) => {
+    try {
+      updateCourrier(updatedMail.id, updatedMail);
+      addToast('✏️ Courrier modifié avec succès', 'success');
+      handleCloseModal();
+    } catch (error) {
+      addToast('❌ Erreur lors de la modification', 'error');
+    }
+  };
+
+  const filteredMails = mails.filter(mail => {
+    const q = search.toLowerCase();
     return (
-      <span className={`inline-flex items-center rounded-full font-medium border ${statusClass} ${sizeClasses[size]}`}>
-        {currentStatus}
-      </span>
+      (mail.objet || '').toLowerCase().includes(q) ||
+      (mail.expediteur || '').toLowerCase().includes(q) ||
+      (mail.destinataire || '').toLowerCase().includes(q)
+    );
+  });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-main">
+        <LoadingSpinner 
+          size="lg" 
+          text="Chargement des courriers arrivés..." 
+          color="primary"
+        />
+      </div>
     );
   }
 
   return (
-    <div className="relative">
-      <button
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setIsOpen(!isOpen);
-        }}
-        disabled={isUpdating}
-        className={`inline-flex items-center rounded-full font-medium border transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${statusClass} ${sizeClasses[size]} ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
-        title="Cliquer pour modifier le statut"
-      >
-        {isUpdating ? (
-          <>
-            <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Mise à jour...
-          </>
-        ) : (
-          <>
-            {currentStatus}
-            <svg className="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </>
-        )}
-      </button>
+    <div ref={containerRef} className="relative w-full h-[100dvh] flex flex-col bg-main text-main">
+      {/* Titre avec logo */}
+      <div className="px-4 pt-4 pb-2">
+        <h1 className="text-2xl font-bold text-[#15514f] flex items-center gap-3">
+          <span className="text-3xl">📥</span>
+          Courrier Arrivée
+        </h1>
+      </div>
 
-      {isOpen && !isUpdating && (
-        <>
-          {/* Overlay pour fermer le dropdown */}
-          <div 
-            className="fixed inset-0 z-10" 
-            onClick={() => setIsOpen(false)}
-          />
-          
-          {/* Dropdown menu */}
-          <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
-            {STATUS_OPTIONS.map((option) => {
-              const optionKey = option.toLowerCase();
-              const optionClass = STATUS_STYLES[optionKey] || STATUS_STYLES['en attente'];
-              const isSelected = option === currentStatus;
-              
-              return (
-                <button
-                  key={option}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleStatusSelect(option);
-                  }}
-                  className={`w-full text-left px-3 py-2 hover:bg-gray-50 transition-colors duration-150 flex items-center justify-between ${isSelected ? 'bg-blue-50' : ''}`}
-                >
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${optionClass.replace('hover:bg-', 'bg-').replace(' hover:bg-yellow-200', '').replace(' hover:bg-blue-200', '').replace(' hover:bg-green-200', '').replace(' hover:bg-gray-200', '').replace(' hover:bg-red-200', '').replace(' hover:bg-purple-200', '')}`}>
-                    {option}
-                  </span>
-                  {isSelected && (
-                    <svg className="h-4 w-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                </button>
-              );
-            })}
+      {/* Barre d'outils avec recherche, tri et ajouter */}
+      <div className="flex items-center gap-4 mb-4 px-4">
+        <input
+          type="text"
+          placeholder="Rechercher par objet, expéditeur..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 px-4 py-3 bg-[#FCFCFC] border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#15514f] shadow-sm"
+        />
+        <select className="px-4 py-3 bg-[#FCFCFC] border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#15514f] shadow-sm min-w-[140px]">
+          <option value="">Trier par</option>
+          <option value="date">Date</option>
+          <option value="expediteur">Expéditeur</option>
+          <option value="objet">Objet</option>
+          <option value="statut">Statut</option>
+        </select>
+        <button
+          onClick={() => setShowForm(f => !f)}
+          className="px-6 py-3 bg-[#15514f] text-white rounded-lg hover:bg-[#0f3e3c] transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm"
+        >
+          <span>➕</span>
+          Ajouter un nouveau courrier arrivé
+        </button>
+      </div>
+
+      {/* Formulaire réduit */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-2">
+          <div className="w-full max-w-md bg-[#FCFCFC] rounded-xl shadow-lg overflow-y-auto border border-primary" style={{ minHeight: '250px', maxHeight: '80vh' }}>
+            <div
+              tabIndex={-1}
+              ref={formRef}
+              aria-label="Formulaire d'ajout de courrier"
+              className="p-3"
+            >
+              <CourrierForm 
+                type="ARRIVE" 
+                onClose={() => setShowForm(false)} 
+                onAddMail={handleAddMail} 
+              />
+            </div>
           </div>
-        </>
+        </div>
       )}
+
+      {/* Modal vue */}
+      {modalType === 'view' && selectedMail && (
+        <CourrierDetailModal 
+          courrier={selectedMail} 
+          onClose={handleCloseModal} 
+          onStatusUpdate={handleStatusUpdate}
+          type="ARRIVE"
+        />
+      )}
+
+      {/* Modal édition */}
+      {modalType === 'edit' && selectedMail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md bg-[#FCFCFC] rounded-xl shadow-lg p-4 overflow-y-auto border border-primary relative" style={{ minHeight: '320px', maxHeight: '85vh' }}>
+            <button onClick={handleCloseModal} className="absolute top-2 right-2 text-gray-600 hover:text-primary text-xl">✕</button>
+            <h2 className="text-lg font-bold mb-4 text-primary">Éditer le courrier</h2>
+            <CourrierForm
+              type="ARRIVE"
+              onClose={handleCloseModal}
+              onAddMail={handleUpdateMail}
+              initialValues={selectedMail}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Tableau */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-4">
+        <MailTable
+          mails={filteredMails}
+          onRemove={handleRemove}
+          search={search}
+          setSearch={setSearch}
+          onView={handleView}
+          onEdit={handleEdit}
+          lastAddedId={lastAddedId}
+          onStatusUpdate={handleStatusUpdate}
+        />
+      </div>
     </div>
   );
 }
