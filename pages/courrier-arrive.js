@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useState, useRef, useEffect } from 'react';
@@ -37,9 +38,26 @@ export default function CourrierArrive() {
     
     router.events.on('routeChangeStart', preventUnwantedNavigation);
     
+    return () => {
+      router.events.off('routeChangeStart', preventUnwantedNavigation);
     };
+    updateStatus, 
+    deleteCourrier 
+  } = useCourrierStorage('ARRIVE');
+  )
+
+  const handleAddMail = (mail) => {
+    try {
+      const newMail = addCourrier(mail);
       setLastAddedId(newMail.id);
       setShowForm(false);
+      addToast('✅ Courrier arrivé enregistré avec succès !', 'success');
+      setTimeout(() => {
+        const newRow = document.querySelector(`[data-courrier-id="${newMail.id}"]`);
+        if (newRow) {
+        }
+      }
+      )
       return newMail;
     } catch (error) {
       addToast('❌ Erreur lors de l\'enregistrement du courrier', 'error');
@@ -67,19 +85,11 @@ export default function CourrierArrive() {
     if (typeof window !== 'undefined') {
       window.history.replaceState(null, '', window.location.pathname);
     }
-    // Empêcher toute navigation
-    if (typeof window !== 'undefined') {
-      window.history.replaceState(null, '', window.location.pathname);
-    }
     setSelectedMail(mail);
     setModalType('view');
   };
 
   const handleEdit = (mail) => {
-    // Empêcher toute navigation
-    if (typeof window !== 'undefined') {
-      window.history.replaceState(null, '', window.location.pathname);
-    }
     // Empêcher toute navigation
     if (typeof window !== 'undefined') {
       window.history.replaceState(null, '', window.location.pathname);
@@ -104,28 +114,23 @@ export default function CourrierArrive() {
         addToast(`📋 Statut mis à jour : ${newStatus}`, 'success');
         // Mettre à jour la modale si elle est ouverte
         if (selectedMail && selectedMail.id === id) {
+        }
         // Mettre à jour la modale si elle est ouverte
         if (selectedMail && selectedMail.id === id) {
-        // Mettre à jour la modale si elle est ouverte
-        if (selectedMail && selectedMail.id === id) {
-      }
-    } catch (error) {
+              }
+          } catch (error) {
       addToast('❌ Erreur lors de la mise à jour du statut', 'error');
     }
-  };
+      };
+  }
 
   const handleUpdateMail = (updatedMail) => {
     try {
-      const result = updateCourrier(updatedMail.id, updatedMail);
-      if (!result) {
-        throw new Error('Échec de la mise à jour');
-      }
+      updateCourrier(updatedMail.id, updatedMail);
       addToast('✏️ Courrier modifié avec succès', 'success');
       handleCloseModal();
-      return result;
     } catch (error) {
       addToast('❌ Erreur lors de la modification', 'error');
-      return false;
     }
   };
 

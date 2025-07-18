@@ -115,11 +115,12 @@ export default function CourrierArrive() {
         addToast(`📋 Statut mis à jour : ${newStatus}`, 'success');
         // Mettre à jour la modale si elle est ouverte
         if (selectedMail && selectedMail.id === id) {
-      }
-    } catch (error) {
+              }
+          } catch (error) {
       addToast('❌ Erreur lors de la mise à jour du statut', 'error');
     }
-  };
+      };
+  }
 
   const handleUpdateMail = (updatedMail) => {
     try {

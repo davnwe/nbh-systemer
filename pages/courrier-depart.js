@@ -104,8 +104,6 @@ export default function CourrierArrive() {
         addToast(`📋 Statut mis à jour : ${newStatus}`, 'success');
         // Mettre à jour la modale si elle est ouverte
         if (selectedMail && selectedMail.id === id) {
-          setSelectedMail(prev => ({ ...prev, statut: newStatus }));
-        }
         // Mettre à jour la modale si elle est ouverte
         if (selectedMail && selectedMail.id === id) {
         // Mettre à jour la modale si elle est ouverte
@@ -118,11 +116,16 @@ export default function CourrierArrive() {
 
   const handleUpdateMail = (updatedMail) => {
     try {
-      updateCourrier(updatedMail.id, updatedMail);
+      const result = updateCourrier(updatedMail.id, updatedMail);
+      if (!result) {
+        throw new Error('Échec de la mise à jour');
+      }
       addToast('✏️ Courrier modifié avec succès', 'success');
       handleCloseModal();
+      return result;
     } catch (error) {
       addToast('❌ Erreur lors de la modification', 'error');
+      return false;
     }
   };
 
