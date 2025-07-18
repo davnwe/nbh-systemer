@@ -9,9 +9,18 @@ import Parametres from './Parametres.jsx';
 
 export default function MainLayout({ children }) {
   const [currentView, setCurrentView] = useState('accueil');
+  
+  // Empêcher les changements de vue non intentionnels
+  const handleViewChange = (newView) => {
+    // Vérifier que le changement de vue est intentionnel
+    if (newView && newView !== currentView) {
+      setCurrentView(newView);
+    }
+  };
+  
   return (
     <div className="min-h-screen flex bg-[#F7F8FA] text-gray-900">
-      <SidebarMenu currentView={currentView} setCurrentView={setCurrentView} />
+      <SidebarMenu currentView={currentView} setCurrentView={handleViewChange} />
       <div className="flex-1 flex flex-col min-h-screen pl-[80px] md:pl-[120px] transition-all duration-300 pb-16">
         <main className="flex-1 w-full py-4 px-4 pr-6">
           {currentView === 'accueil' && <Dashboard />}
@@ -21,7 +30,7 @@ export default function MainLayout({ children }) {
           {currentView === 'parametres' && <Parametres />}
           {children}
         </main>
-        <BottomNav currentView={currentView} setCurrentView={setCurrentView} />
+        <BottomNav currentView={currentView} setCurrentView={handleViewChange} />
       </div>
     </div>
   );

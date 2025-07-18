@@ -46,8 +46,28 @@ export function useCourrierStorage(type) {
 
   // Ajouter un courrier
   const addCourrier = useCallback((newCourrier) => {
+    // Générer un numéro automatique si pas fourni
+    let numeroToUse = newCourrier.numero;
+    if (!numeroToUse) {
+      const prefix = type === 'ARRIVE' ? 'ARR-' : 'DEP-';
+      const prefixPattern = new RegExp(`^${prefix.replace('-', '\\-')}\\d{5}$`);
+      
+      const existingNumbers = courriers
+        .map(c => c.numero)
+        .filter(num => num && prefixPattern.test(num))
+        .map(num => parseInt(num.replace(prefix, '')))
+        .filter(num => !isNaN(num));
+
+      const nextNumber = existingNumbers.length > 0 
+        ? Math.max(...existingNumbers) + 1 
+        : 1;
+
+      numeroToUse = prefix + nextNumber.toString().padStart(5, '0');
+    }
+    
     const courrierWithId = {
       ...newCourrier,
+      numero: numeroToUse,
       id: Date.now() + Math.random(), // ID unique
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

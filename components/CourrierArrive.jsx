@@ -29,6 +29,9 @@ export default function CourrierArrive() {
     setLastAddedId(newMail.id);
     setShowForm(false);
     addToast('Nouveau courrier ajouté !', 'success');
+    
+    // Empêcher toute navigation automatique
+    return newMail;
   };
 
   const handleRemove = (id) => {

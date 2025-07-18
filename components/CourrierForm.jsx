@@ -48,25 +48,24 @@ export default function CourrierForm({ type = 'ARRIVE', onClose, onAddMail, init
 
   const generateAutoNumber = React.useCallback(async () => {
     try {
-      const apiUrl = type === 'ARRIVE' ? '/api/courrier-arrive' : '/api/courrier-depart';
-      const response = await fetch(apiUrl);
-      if (response.ok) {
-        const courriers = await response.json();
-        const prefix = type === 'ARRIVE' ? 'ARR-' : 'DEP-';
-        const prefixPattern = new RegExp(`^${prefix.replace('-', '\-')}\d{5}$`);
+      // Récupérer les courriers depuis le localStorage pour la numérotation
+      const storageKey = type === 'ARRIVE' ? 'nbh_courriers_arrive' : 'nbh_courriers_depart';
+      const existingCourriers = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      
+      const prefix = type === 'ARRIVE' ? 'ARR-' : 'DEP-';
+      const prefixPattern = new RegExp(`^${prefix.replace('-', '\\-')}\\d{5}$`);
 
-        const existingNumbers = courriers
-          .map(c => c.numero)
-          .filter(num => prefixPattern.test(num))
-          .map(num => parseInt(num.replace(prefix, '')))
-          .filter(num => !isNaN(num));
+      const existingNumbers = existingCourriers
+        .map(c => c.numero)
+        .filter(num => num && prefixPattern.test(num))
+        .map(num => parseInt(num.replace(prefix, '')))
+        .filter(num => !isNaN(num));
 
-        const nextNumber = existingNumbers.length > 0 
-          ? Math.max(...existingNumbers) + 1 
-          : 1;
+      const nextNumber = existingNumbers.length > 0 
+        ? Math.max(...existingNumbers) + 1 
+        : 1;
 
-        setNumero(prefix + nextNumber.toString().padStart(5, '0'));
-      }
+      setNumero(prefix + nextNumber.toString().padStart(5, '0'));
     } catch (error) {
       console.error('Erreur génération numéro:', error);
       const prefix = type === 'ARRIVE' ? 'ARR-' : 'DEP-';
@@ -106,7 +105,10 @@ export default function CourrierForm({ type = 'ARRIVE', onClose, onAddMail, init
 
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
 
     // Validation des champs obligatoires
     if (!objet || !dateReception) {
@@ -142,7 +144,12 @@ export default function CourrierForm({ type = 'ARRIVE', onClose, onAddMail, init
 
       // Afficher le toast de confirmation avant de fermer le formulaire
       addToast(initialValues ? 'Courrier modifié avec succès' : 'Courrier ajouté avec succès', 'success');
-      onClose();
+      
+      // Fermer le formulaire après un court délai pour laisser le temps au toast d'apparaître
+      setTimeout(() => {
+        if (onClose) onClose();
+      }, 100);
+      
       // Le formulaire se ferme, mais aucune redirection n'est effectuée ici
     } catch (error) {
       console.error("Erreur lors de l'enregistrement :", error);

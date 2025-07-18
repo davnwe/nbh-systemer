@@ -1,4 +1,6 @@
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { useState, useRef, useEffect } from 'react';
 import CourrierForm from '../components/CourrierForm.jsx';
 import MailTable from '../components/MailTable';
@@ -8,6 +10,7 @@ import { useCourrierStorage } from '../hooks/useCourrierStorage';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function CourrierDepart() {
+  const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const formRef = useRef(null);
   const [search, setSearch] = useState('');
@@ -16,6 +19,23 @@ export default function CourrierDepart() {
   const [selectedMail, setSelectedMail] = useState(null);
   const [modalType, setModalType] = useState(null);
   const [lastAddedId, setLastAddedId] = useState(null);
+
+  // Empêcher les redirections automatiques
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      // Empêcher la redirection si un formulaire est ouvert
+      if (showForm) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [showForm]);
 
   // Utiliser le hook de stockage
   const { 
@@ -42,6 +62,11 @@ export default function CourrierDepart() {
           setTimeout(() => newRow.classList.remove('animate-pulse'), 2000);
         }
       }, 100);
+      
+      // Empêcher toute redirection
+      if (router.pathname !== '/courrier-depart') {
+        router.replace('/courrier-depart');
+      }
       
       return newMail;
     } catch (error) {
