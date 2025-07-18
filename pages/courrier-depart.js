@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import CourrierForm from '../components/CourrierForm.jsx';
 import MailTable from '../components/MailTable';
 import CourrierDetailModal from '../components/CourrierDetailModal';
@@ -104,6 +104,8 @@ export default function CourrierArrive() {
         addToast(`📋 Statut mis à jour : ${newStatus}`, 'success');
         // Mettre à jour la modale si elle est ouverte
         if (selectedMail && selectedMail.id === id) {
+          setSelectedMail(prev => ({ ...prev, statut: newStatus }));
+        }
         // Mettre à jour la modale si elle est ouverte
         if (selectedMail && selectedMail.id === id) {
         // Mettre à jour la modale si elle est ouverte
