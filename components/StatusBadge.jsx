@@ -62,7 +62,11 @@ export default function StatusBadge({
   return (
     <div className="relative">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
         disabled={isUpdating}
         className={`inline-flex items-center rounded-full font-medium border transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${statusClass} ${sizeClasses[size]} ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
         title="Cliquer pour modifier le statut"
@@ -103,7 +107,11 @@ export default function StatusBadge({
               return (
                 <button
                   key={option}
-                  onClick={() => handleStatusSelect(option)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleStatusSelect(option);
+                  }}
                   className={`w-full text-left px-3 py-2 hover:bg-gray-50 transition-colors duration-150 flex items-center justify-between ${isSelected ? 'bg-blue-50' : ''}`}
                 >
                   <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${optionClass.replace('hover:bg-', 'bg-').replace(' hover:bg-yellow-200', '').replace(' hover:bg-blue-200', '').replace(' hover:bg-green-200', '').replace(' hover:bg-gray-200', '').replace(' hover:bg-red-200', '').replace(' hover:bg-purple-200', '')}`}>

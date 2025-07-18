@@ -105,9 +105,11 @@ export default function CourrierForm({ type = 'ARRIVE', onClose, onAddMail, init
 
 
   const handleSubmit = async (e) => {
+    // Empêcher complètement la soumission du formulaire HTML
     if (e) {
       e.preventDefault();
       e.stopPropagation();
+      e.stopImmediatePropagation();
     }
 
     // Validation des champs obligatoires
@@ -145,15 +147,15 @@ export default function CourrierForm({ type = 'ARRIVE', onClose, onAddMail, init
       // Afficher le toast de confirmation avant de fermer le formulaire
       addToast(initialValues ? 'Courrier modifié avec succès' : 'Courrier ajouté avec succès', 'success');
       
-      // Fermer le formulaire après un court délai pour laisser le temps au toast d'apparaître
-      setTimeout(() => {
-        if (onClose) onClose();
-      }, 100);
+      // Fermer le formulaire immédiatement sans délai
+      if (onClose) onClose();
       
-      // Le formulaire se ferme, mais aucune redirection n'est effectuée ici
+      // Empêcher toute navigation
+      return false;
     } catch (error) {
       console.error("Erreur lors de l'enregistrement :", error);
       addToast("Erreur lors de l'enregistrement du courrier", 'error');
+      return false;
     }
   };
 

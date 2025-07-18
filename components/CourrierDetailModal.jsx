@@ -86,7 +86,11 @@ export default function CourrierDetailModal({
         {/* Header */}
         <div className="bg-gradient-to-r from-[#15514f] to-[#0f3e3c] px-6 py-4 relative">
           <button 
-            onClick={onClose} 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onClose();
+            }} 
             className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors text-2xl font-light"
             aria-label="Fermer"
           >
@@ -231,7 +235,11 @@ export default function CourrierDetailModal({
         <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
           <div className="flex justify-end">
             <button
-              onClick={onClose}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+              }}
               className="px-6 py-2 bg-[#15514f] text-white rounded-lg hover:bg-[#0f3e3c] transition-colors font-medium"
             >
               Fermer

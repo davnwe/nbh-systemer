@@ -25,26 +25,53 @@ export default function CourrierArrive() {
   } = useCourrierStorage('ARRIVE');
 
   const handleAddMail = (mail) => {
-    const newMail = addCourrier(mail);
-    setLastAddedId(newMail.id);
-    setShowForm(false);
-    addToast('Nouveau courrier ajouté !', 'success');
-    
-    // Empêcher toute navigation automatique
-    return newMail;
+    try {
+      const newMail = addCourrier(mail);
+      setLastAddedId(newMail.id);
+      setShowForm(false);
+      addToast('✅ Courrier arrivé enregistré avec succès !', 'success');
+      
+      // Scroll vers le nouveau courrier après un court délai
+      setTimeout(() => {
+        const newRow = document.querySelector(`[data-courrier-id="${newMail.id}"]`);
+        if (newRow) {
+          newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      
+      // Empêcher toute navigation automatique
+      return newMail;
+    } catch (error) {
+      addToast('❌ Erreur lors de l\'enregistrement', 'error');
+      return null;
+    }
   };
 
   const handleRemove = (id) => {
-    deleteCourrier(id);
-    addToast('Courrier supprimé.', 'success');
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce courrier ?')) {
+      try {
+        deleteCourrier(id);
+        addToast('🗑️ Courrier supprimé avec succès', 'success');
+      } catch (error) {
+        addToast('❌ Erreur lors de la suppression', 'error');
+      }
+    }
   };
 
   const handleView = (mail) => {
+    // Empêcher toute navigation
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
     setSelectedMail(mail);
     setModalType('view');
   };
 
   const handleEdit = (mail) => {
+    // Empêcher toute navigation
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
     setSelectedMail(mail);
     setModalType('edit');
   };
@@ -55,15 +82,29 @@ export default function CourrierArrive() {
   };
 
   const handleStatusUpdate = async (id, newStatus) => {
-    updateStatus(id, newStatus);
-    addToast('Statut mis à jour avec succès', 'success');
+    try {
+      const updatedCourrier = updateStatus(id, newStatus);
+      if (updatedCourrier) {
+        addToast(`📋 Statut mis à jour : ${newStatus}`, 'success');
+        // Forcer la mise à jour de l'affichage sans navigation
+        setSelectedMail(prev => prev ? { ...prev, statut: newStatus } : null);
+      }
+    } catch (error) {
+      addToast('❌ Erreur lors de la mise à jour du statut', 'error');
+    }
   };
 
   const handleUpdateMail = (updatedMail) => {
-    // Cette fonction sera utilisée pour les modifications complètes via le formulaire
-    // Pour l'instant, on peut la laisser vide ou implémenter selon les besoins
-    addToast('Courrier modifié.', 'success');
-    handleCloseModal();
+    try {
+      // Mise à jour via le hook de stockage
+      const updated = updateCourrier(updatedMail.id, updatedMail);
+      if (updated) {
+        addToast('✏️ Courrier modifié avec succès', 'success');
+        handleCloseModal();
+      }
+    } catch (error) {
+      addToast('❌ Erreur lors de la modification', 'error');
+    }
   };
 
   // Utiliser localMails au lieu de mails pour le filtrage

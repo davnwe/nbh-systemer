@@ -22,20 +22,33 @@ export default function CourrierDepart() {
 
   // Empêcher les redirections automatiques
   useEffect(() => {
-    const handleBeforeUnload = (e) => {
-      // Empêcher la redirection si un formulaire est ouvert
-      if (showForm) {
+    // Empêcher toute navigation automatique vers l'accueil
+    const preventNavigation = (e) => {
+      if (e.target?.href === '/' || e.target?.pathname === '/') {
         e.preventDefault();
-        e.returnValue = '';
+        e.stopPropagation();
+        return false;
       }
     };
     
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    // Empêcher les clics sur les liens vers l'accueil
+    document.addEventListener('click', preventNavigation, true);
+    
+    // Empêcher les changements de route non désirés
+    const handleRouteChange = (url) => {
+      if (url === '/' && router.pathname === '/courrier-depart') {
+        router.replace('/courrier-depart');
+        return false;
+      }
+    };
+    
+    router.events.on('routeChangeStart', handleRouteChange);
     
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('click', preventNavigation, true);
+      router.events.off('routeChangeStart', handleRouteChange);
     };
-  }, [showForm]);
+  }, [router]);
 
   // Utiliser le hook de stockage
   const { 
@@ -64,9 +77,8 @@ export default function CourrierDepart() {
       }, 100);
       
       // Empêcher toute redirection
-      if (router.pathname !== '/courrier-depart') {
-        router.replace('/courrier-depart');
-      }
+      // Forcer le maintien sur la page courante
+      window.history.replaceState(null, '', '/courrier-depart');
       
       return newMail;
     } catch (error) {

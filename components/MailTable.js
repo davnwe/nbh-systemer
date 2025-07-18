@@ -239,14 +239,22 @@ export default function MailTable({
                       <td className="px-4 py-3">
                         <div className="flex justify-center gap-1">
                           <button 
-                            onClick={() => onView?.(mail)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              onView?.(mail);
+                            }}
                             className="p-1.5 hover:bg-gray-700/50 rounded transition"
                             title="Voir"
                           >
                             <FiEye className="w-4 h-4 text-blue-400" />
                           </button>
                           <button
-                            onClick={() => onEdit?.(mail)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              onEdit?.(mail);
+                            }}
                             className="p-1.5 hover:bg-gray-700/50 rounded transition"
                             title="Éditer"
                           >
@@ -254,7 +262,11 @@ export default function MailTable({
                           </button>
                           {onRemove && (
                             <button
-                              onClick={() => onRemove(mail.id)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onRemove(mail.id);
+                              }}
                               className="p-1.5 hover:bg-gray-700/50 rounded transition"
                               title="Supprimer"
                             >
@@ -343,14 +355,35 @@ export default function MailTable({
                 </div>
 
                 <div className="flex justify-end gap-2 mt-3">
-                  <button onClick={() => onView?.(mail)} className="p-1.5 text-blue-400">
+                  <button 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onView?.(mail);
+                    }} 
+                    className="p-1.5 text-blue-400"
+                  >
                     <FiEye className="w-4 h-4" />
                   </button>
-                  <button onClick={() => onEdit?.(mail)} className="p-1.5 text-yellow-400">
+                  <button 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onEdit?.(mail);
+                    }} 
+                    className="p-1.5 text-yellow-400"
+                  >
                     <FiEdit2 className="w-4 h-4" />
                   </button>
                   {onRemove && (
-                    <button onClick={() => onRemove(mail.id)} className="p-1.5 text-red-400">
+                    <button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onRemove(mail.id);
+                      }} 
+                      className="p-1.5 text-red-400"
+                    >
                       <FiTrash2 className="w-4 h-4" />
                     </button>
                   )}
@@ -374,7 +407,11 @@ export default function MailTable({
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setPage(p => Math.max(1, p - 1));
+              }}
               disabled={page === 1}
               className="px-4 py-2 border border-gray-700 rounded-lg disabled:opacity-50 hover:bg-gray-800 transition"
             >
@@ -384,7 +421,11 @@ export default function MailTable({
               Page {page} / {totalPages}
             </span>
             <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setPage(p => Math.min(totalPages, p + 1));
+              }}
               disabled={page === totalPages}
               className="px-4 py-2 border border-gray-700 rounded-lg disabled:opacity-50 hover:bg-gray-800 transition"
             >
