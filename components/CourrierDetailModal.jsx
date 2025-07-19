@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { useToast } from './ToastContext';
+import { useToast } from './ToastContainer';
 import LoadingSpinner from './LoadingSpinner';
 
 const CourrierDetailModal = ({ courrier, isOpen, onClose, onStatusUpdate }) => {
   const [isUpdating, setIsUpdating] = useState(false);
-  const { showToast } = useToast();
+  const { addToast } = useToast();
 
   if (!isOpen || !courrier) return null;
 
@@ -13,10 +13,10 @@ const CourrierDetailModal = ({ courrier, isOpen, onClose, onStatusUpdate }) => {
     setIsUpdating(true);
     try {
       await onStatusUpdate(courrier.id, newStatus);
-      showToast('Statut mis à jour avec succès', 'success');
+      addToast('Statut mis à jour avec succès', 'success');
       onClose();
     } catch (error) {
-      showToast('Erreur lors de la mise à jour du statut', 'error');
+      addToast('Erreur lors de la mise à jour du statut', 'error');
     } finally {
       setIsUpdating(false);
     }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import CourrierForm from './CourrierForm.jsx';
 import MailTable from './MailTable';
-import { useToast } from './ToastContext';
+import { useToast } from './ToastContainer';
 
 function MailDetailModal({ mail, onClose }) {
   if (!mail) return null;

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import useTranslation from '../hooks/useTranslation';
-import { useToast } from './ToastContext';
+import { useToast } from './ToastContainer';
 
 export default function PartenaireForm({ onAdd, editingPartenaire, onUpdate, onCancel }) {
   const { t } = useTranslation();
-  const { showToast } = useToast();
+  const { addToast } = useToast();
   const [form, setForm] = useState({ nom: '', type: 'Public', email: '' });
   const [message, setMessage] = useState('');
 
@@ -25,7 +25,7 @@ export default function PartenaireForm({ onAdd, editingPartenaire, onUpdate, onC
     e.preventDefault();
     if (!form.nom) {
       setMessage(t('fillRequiredFields'));
-      showToast(t('fillRequiredFields'), 'error');
+      addToast(t('fillRequiredFields'), 'error');
       return;
     }
 
@@ -37,7 +37,7 @@ export default function PartenaireForm({ onAdd, editingPartenaire, onUpdate, onC
       // Mode ajout
       if (onAdd) onAdd({ ...form, id: Date.now() });
       setMessage(t('successPartner'));
-      showToast(t('successPartner'), 'success');
+      addToast(t('successPartner'), 'success');
     }
 
     setForm({ nom: '', type: 'Public', email: '' });
