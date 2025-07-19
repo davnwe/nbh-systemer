@@ -1,7 +1,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef,  } from 'react';
 import CourrierForm from '../components/CourrierForm.jsx';
 import MailTable from '../components/MailTable';
 import CourrierDetailModal from '../components/CourrierDetailModal';
