@@ -1,252 +1,183 @@
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/router';
-import { useState, useRef,  } from 'react';
-import CourrierForm from '../components/CourrierForm.jsx';
-import MailTable from '../components/MailTable';
-import CourrierDetailModal from '../components/CourrierDetailModal';
-import { useToast } from '../components/ToastContainer';
-import { useCourrierStorage } from '../hooks/useCourrierStorage';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { useState, useRef, useEffect } from 'react';
+import StatusBadge from './StatusBadge';
 
-export default function CourrierArrive() {
-  const router = useRouter();
-  const [showForm, setShowForm] = useState(false);
-  const formRef = useRef(null);
-  const [search, setSearch] = useState('');
-  const { addToast } = useToast();
-  const containerRef = useRef(null);
-  const [selectedMail, setSelectedMail] = useState(null);
-  const [modalType, setModalType] = useState(null);
-  const [lastAddedId, setLastAddedId] = useState(null);
+export default function MailTable({ 
+  mails, 
+  onRemove, 
+  onView, 
+  onEdit, 
+  lastAddedId, 
+  onStatusUpdate 
+}) {
+  const [sortBy, setSortBy] = useState('');
+  const [sortOrder, setSortOrder] = useState('asc');
 
-  // Empêcher les redirections automatiques
   useEffect(() => {
-    // Forcer le maintien sur la page courante
-    const currentPath = '/courrier-arrive';
-    if (router.pathname !== currentPath) {
-      router.replace(currentPath);
-    }
-    
-    // Empêcher les navigations non intentionnelles
-    const preventUnwantedNavigation = (url) => {
-      if (url !== currentPath && router.pathname === currentPath) {
-        // Annuler la navigation si elle n'est pas intentionnelle
-        return false;
-      }
-    };
-    
-    router.events.on('routeChangeStart', preventUnwantedNavigation);
-    
-    return () => {
-      router.events.off('routeChangeStart', preventUnwantedNavigation);
-    };
-  }, [router]);
-
-  // Utiliser le hook de stockage
-  const { 
-    courriers: mails, 
-    loading, 
-    addCourrier, 
-    updateStatus, 
-    deleteCourrier 
-  } = useCourrierStorage('ARRIVE');
-
-  const handleAddMail = (mail) => {
-    try {
-      const newMail = addCourrier(mail);
-      setLastAddedId(newMail.id);
-      setShowForm(false);
-      addToast('✅ Courrier arrivé enregistré avec succès !', 'success');
-      
-      // Scroll vers le nouveau courrier
-      setTimeout(() => {
-        const newRow = document.querySelector(`[data-courrier-id="${newMail.id}"]`);
-        if (newRow) {
-          newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 100);
-      
-      return newMail;
-    } catch (error) {
-      addToast('❌ Erreur lors de l\'enregistrement du courrier', 'error');
-      throw error;
-    }
-  };
-
-  const handleRemove = (id) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce courrier ?')) {
-      try {
-        deleteCourrier(id);
-        addToast('🗑️ Courrier supprimé avec succès', 'success');
-      } catch (error) {
-        addToast('❌ Erreur lors de la suppression', 'error');
+    if (lastAddedId) {
+      const element = document.querySelector(`[data-courrier-id="${lastAddedId}"]`);
+      if (element) {
+        element.classList.add('highlight-new');
+        setTimeout(() => {
+          element.classList.remove('highlight-new');
+        }, 3000);
       }
     }
-  };
+  }, [lastAddedId]);
 
-  const handleView = (mail) => {
-    // Empêcher toute navigation
-    if (typeof window !== 'undefined') {
-      window.history.replaceState(null, '', window.location.pathname);
-    }
-    setSelectedMail(mail);
-    setModalType('view');
-  };
-
-  const handleEdit = (mail) => {
-    // Empêcher toute navigation
-    if (typeof window !== 'undefined') {
-      window.history.replaceState(null, '', window.location.pathname);
-    }
-    setSelectedMail(mail);
-    setModalType('edit');
-  };
-
-  const handleCloseModal = () => {
-    setSelectedMail(null);
-    setModalType(null);
-  };
-
-  const handleStatusUpdate = async (id, newStatus) => {
-    try {
-      const updatedCourrier = updateStatus(id, newStatus);
-      if (updatedCourrier) {
-        addToast(`📋 Statut mis à jour : ${newStatus}`, 'success');
-        // Mettre à jour la modale si elle est ouverte
-        if (selectedMail && selectedMail.id === id) {
-              }
-          } catch (error) {
-      addToast('❌ Erreur lors de la mise à jour du statut', 'error');
-    }
-      };
-  }
-
-  const handleUpdateMail = (updatedMail) => {
-    try {
-      updateCourrier(updatedMail.id, updatedMail);
-      addToast('✏️ Courrier modifié avec succès', 'success');
-      handleCloseModal();
-    } catch (error) {
-      addToast('❌ Erreur lors de la modification', 'error');
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
     }
   };
 
-  const filteredMails = mails.filter(mail => {
-    const q = search.toLowerCase();
-    return (
-      (mail.objet || '').toLowerCase().includes(q) ||
-      (mail.expediteur || '').toLowerCase().includes(q) ||
-      (mail.destinataire || '').toLowerCase().includes(q)
-    );
+  const sortedMails = [...mails].sort((a, b) => {
+    if (!sortBy) return 0;
+    
+    let aVal = a[sortBy] || '';
+    let bVal = b[sortBy] || '';
+    
+    if (sortBy === 'dateReception' || sortBy === 'dateCreation') {
+      aVal = new Date(aVal);
+      bVal = new Date(bVal);
+    }
+    
+    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
   });
 
-  if (loading) {
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    try {
+      return new Date(dateString).toLocaleDateString('fr-FR');
+    } catch {
+      return '-';
+    }
+  };
+
+  const handleStatusChange = (id, newStatus) => {
+    onStatusUpdate(id, newStatus);
+  };
+
+  if (mails.length === 0) {
     return (
-      <div className="flex items-center justify-center h-screen bg-main">
-        <LoadingSpinner 
-          size="lg" 
-          text="Chargement des courriers arrivés..." 
-          color="primary"
-        />
+      <div className="text-center py-12 text-gray-500">
+        <div className="text-6xl mb-4">📭</div>
+        <p className="text-lg">Aucun courrier trouvé</p>
+        <p className="text-sm mt-2">Commencez par ajouter un nouveau courrier</p>
       </div>
     );
   }
 
   return (
-    <div ref={containerRef} className="relative w-full h-[100dvh] flex flex-col bg-main text-main">
-      {/* Titre avec logo */}
-      <div className="px-4 pt-4 pb-2">
-        <h1 className="text-2xl font-bold text-[#15514f] flex items-center gap-3">
-          <span className="text-3xl">📥</span>
-          Courrier Arrivée
-        </h1>
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th 
+                className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('objet')}
+              >
+                Objet {sortBy === 'objet' && (sortOrder === 'asc' ? '↑' : '↓')}
+              </th>
+              <th 
+                className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('expediteur')}
+              >
+                Expéditeur {sortBy === 'expediteur' && (sortOrder === 'asc' ? '↑' : '↓')}
+              </th>
+              <th 
+                className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('dateReception')}
+              >
+                Date {sortBy === 'dateReception' && (sortOrder === 'asc' ? '↑' : '↓')}
+              </th>
+              <th 
+                className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('statut')}
+              >
+                Statut {sortBy === 'statut' && (sortOrder === 'asc' ? '↑' : '↓')}
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {sortedMails.map((mail) => (
+              <tr 
+                key={mail.id}
+                data-courrier-id={mail.id}
+                className={`hover:bg-gray-50 transition-colors ${
+                  mail.id === lastAddedId ? 'bg-green-50' : ''
+                }`}
+              >
+                <td className="px-4 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900">
+                    {mail.objet || 'Sans objet'}
+                  </div>
+                  {mail.description && (
+                    <div className="text-sm text-gray-500 truncate max-w-xs">
+                      {mail.description}
+                    </div>
+                  )}
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">
+                    {mail.expediteur || '-'}
+                  </div>
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {formatDate(mail.dateReception || mail.dateCreation)}
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap">
+                  <select
+                    value={mail.statut || 'En attente'}
+                    onChange={(e) => handleStatusChange(mail.id, e.target.value)}
+                    className="text-xs px-2 py-1 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="En attente">En attente</option>
+                    <option value="En cours">En cours</option>
+                    <option value="Traité">Traité</option>
+                    <option value="Archivé">Archivé</option>
+                  </select>
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => onView(mail)}
+                      className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                      title="Voir les détails"
+                    >
+                      👁️
+                    </button>
+                    <button
+                      onClick={() => onEdit(mail)}
+                      className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
+                      title="Modifier"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() => onRemove(mail.id)}
+                      className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                      title="Supprimer"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-
-      {/* Barre d'outils avec recherche, tri et ajouter */}
-      <div className="flex items-center gap-4 mb-4 px-4">
-        <input
-          type="text"
-          placeholder="Rechercher par objet, expéditeur..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 px-4 py-3 bg-[#FCFCFC] border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#15514f] shadow-sm"
-        />
-        <select className="px-4 py-3 bg-[#FCFCFC] border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#15514f] shadow-sm min-w-[140px]">
-          <option value="">Trier par</option>
-          <option value="date">Date</option>
-          <option value="expediteur">Expéditeur</option>
-          <option value="objet">Objet</option>
-          <option value="statut">Statut</option>
-        </select>
-        <button
-          onClick={() => setShowForm(f => !f)}
-          className="px-6 py-3 bg-[#15514f] text-white rounded-lg hover:bg-[#0f3e3c] transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm"
-        >
-          <span>➕</span>
-          Ajouter un nouveau courrier arrivé
-        </button>
-      </div>
-
-      {/* Formulaire réduit */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-2">
-          <div className="w-full max-w-md bg-[#FCFCFC] rounded-xl shadow-lg overflow-y-auto border border-primary" style={{ minHeight: '250px', maxHeight: '80vh' }}>
-            <div
-              tabIndex={-1}
-              ref={formRef}
-              aria-label="Formulaire d'ajout de courrier"
-              className="p-3"
-            >
-              <CourrierForm 
-                type="ARRIVE" 
-                onClose={() => setShowForm(false)} 
-                onAddMail={handleAddMail} 
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal vue */}
-      {modalType === 'view' && selectedMail && (
-        <CourrierDetailModal 
-          courrier={selectedMail} 
-          onClose={handleCloseModal} 
-          onStatusUpdate={handleStatusUpdate}
-          type="ARRIVE"
-        />
-      )}
-
-      {/* Modal édition */}
-      {modalType === 'edit' && selectedMail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-md bg-[#FCFCFC] rounded-xl shadow-lg p-4 overflow-y-auto border border-primary relative" style={{ minHeight: '320px', maxHeight: '85vh' }}>
-            <button onClick={handleCloseModal} className="absolute top-2 right-2 text-gray-600 hover:text-primary text-xl">✕</button>
-            <h2 className="text-lg font-bold mb-4 text-primary">Éditer le courrier</h2>
-            <CourrierForm
-              type="ARRIVE"
-              onClose={handleCloseModal}
-              onAddMail={handleUpdateMail}
-              initialValues={selectedMail}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Tableau */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-4">
-        <MailTable
-          mails={filteredMails}
-          onRemove={handleRemove}
-          search={search}
-          setSearch={setSearch}
-          onView={handleView}
-          onEdit={handleEdit}
-          lastAddedId={lastAddedId}
-          onStatusUpdate={handleStatusUpdate}
-        />
-      </div>
+    }
     </div>
   );
 }
