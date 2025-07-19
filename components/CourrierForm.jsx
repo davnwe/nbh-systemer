@@ -52,11 +52,27 @@ export default function CourrierForm({ type = 'ARRIVE', onClose, onAddMail, init
   // Génération automatique du numéro
   useEffect(() => {
     if (!initialValues?.numero) {
-      const prefix = type === 'ARRIVE' ? 'ARR' : 'DEP';
-      const timestamp = Date.now().toString().slice(-6);
-      setNumero(`${prefix}-${timestamp}`);
+      generateAutoNumber();
     }
   }, [type, initialValues]);
+
+  const generateAutoNumber = async () => {
+    try {
+      // Générer un numéro séquentiel basé sur les courriers existants
+      const existingCourriers = JSON.parse(localStorage.getItem(type === 'ARRIVE' ? 'courriers-arrive' : 'courriers-depart') || '[]');
+      const existingNumbers = existingCourriers
+        .map(c => c.numero)
+        .filter(n => n && n.match(/^\d{5}$/))
+        .map(n => parseInt(n))
+        .filter(n => !isNaN(n));
+
+      const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+      setNumero(String(nextNumber).padStart(5, '0'));
+    } catch (error) {
+      console.error('Erreur génération numéro:', error);
+      setNumero('00001');
+    }
+  };
 
   // Initialisation avec les valeurs existantes
   useEffect(() => {

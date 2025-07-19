@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 
 export function useCourrierStorage(type) {
@@ -29,15 +28,33 @@ export function useCourrierStorage(type) {
     localStorage.setItem(key, JSON.stringify(data));
   };
 
+  const generateAutoNumber = (existingCourriers) => {
+    try {
+      const existingNumbers = existingCourriers
+        .map(c => c.numero)
+        .filter(n => n && n.match(/^\d{5}$/))
+        .map(n => parseInt(n))
+        .filter(n => !isNaN(n));
+
+      const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+      return String(nextNumber).padStart(5, '0');
+    } catch (error) {
+      console.error('Erreur génération numéro:', error);
+      return '00001';
+    }
+  };
+
   const addCourrier = (courrier) => {
     try {
+      const autoNumber = generateAutoNumber(courriers);
       const newCourrier = {
         ...courrier,
         id: Date.now().toString(),
+        numero: courrier.numero || autoNumber,
         dateCreation: new Date().toISOString(),
         type: type
       };
-      const updatedCourriers = [...courriers, newCourrier];
+      const updatedCourriers = [newCourrier, ...courriers];
       setCourriers(updatedCourriers);
       saveCourriers(updatedCourriers);
       return newCourrier;

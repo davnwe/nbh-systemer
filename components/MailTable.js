@@ -1,29 +1,82 @@
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { FiSearch, FiMail, FiEye, FiEdit2, FiTrash2, FiInbox, FiCircle, FiMoreHorizontal } from 'react-icons/fi';
 
-import { useState, useRef, useEffect } from 'react';
-import StatusBadge from './StatusBadge';
+const STATUS_COLORS = {
+  'en cours': 'bg-yellow-500/20 text-yellow-400',
+  'traité': 'bg-green-500/20 text-green-400',
+  'rejeté': 'bg-red-500/20 text-red-400',
+  'archivé': 'bg-gray-500/20 text-gray-300',
+  'nouveau': 'bg-blue-500/20 text-blue-400',
+};
+
+function safeString(val) {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+  if (Array.isArray(val)) return val.map(safeString).join(', ');
+  if (typeof val === 'object') {
+    try {
+      return JSON.stringify(val);
+    } catch {
+      return '';
+    }
+  }
+  return '';
+}
+
+function getStatusClass(status) {
+  const str = safeString(status);
+  return typeof str === 'string' && STATUS_COLORS[str.toLowerCase()]
+    ? STATUS_COLORS[str.toLowerCase()]
+    : 'bg-gray-700 text-gray-200';
+}
 
 export default function MailTable({ 
-  mails, 
+  mails = [], 
   onRemove, 
+  search, 
+  setSearch, 
   onView, 
   onEdit, 
-  lastAddedId, 
-  onStatusUpdate 
+  lastAddedId 
 }) {
-  const [sortBy, setSortBy] = useState('');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [sortBy, setSortBy] = useState('date');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [expandedObjects, setExpandedObjects] = useState(new Set());
 
-  useEffect(() => {
-    if (lastAddedId) {
-      const element = document.querySelector(`[data-courrier-id="${lastAddedId}"]`);
-      if (element) {
-        element.classList.add('highlight-new');
-        setTimeout(() => {
-          element.classList.remove('highlight-new');
-        }, 3000);
+  const filteredMails = useMemo(() => {
+    if (!search) return mails;
+    const searchTerm = search.toLowerCase();
+    return mails.filter(mail =>
+      Object.values(mail).some(val => {
+        const str = safeString(val);
+        return typeof str === 'string' && str.toLowerCase().includes(searchTerm);
+      })
+    );
+  }, [mails, search]);
+
+  const sortedMails = useMemo(() => {
+    const sorted = [...filteredMails].sort((a, b) => {
+      const aVal = a[sortBy] || '';
+      const bVal = b[sortBy] || '';
+
+      if (sortOrder === 'asc') {
+        return aVal.localeCompare(bVal);
+      } else {
+        return bVal.localeCompare(aVal);
       }
-    }
-  }, [lastAddedId]);
+    });
+    return sorted;
+  }, [filteredMails, sortBy, sortOrder]);
+
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
+  const totalPages = Math.max(1, Math.ceil(sortedMails.length / pageSize));
+  const pagedMails = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return sortedMails.slice(start, start + pageSize);
+  }, [sortedMails, page, pageSize]);
 
   const handleSort = (field) => {
     if (sortBy === field) {
@@ -34,149 +87,270 @@ export default function MailTable({
     }
   };
 
-  const sortedMails = [...mails].sort((a, b) => {
-    if (!sortBy) return 0;
-    
-    let aVal = a[sortBy] || '';
-    let bVal = b[sortBy] || '';
-    
-    if (sortBy === 'dateReception' || sortBy === 'dateCreation') {
-      aVal = new Date(aVal);
-      bVal = new Date(bVal);
-    }
-    
-    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
-    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
-    return 0;
-  });
-
   const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    try {
-      return new Date(dateString).toLocaleDateString('fr-FR');
-    } catch {
-      return '-';
-    }
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   };
 
-  const handleStatusChange = (id, newStatus) => {
-    onStatusUpdate(id, newStatus);
+  const toggleObjectExpansion = (mailId) => {
+    setExpandedObjects(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(mailId)) {
+        newSet.delete(mailId);
+      } else {
+        newSet.add(mailId);
+      }
+      return newSet;
+    });
   };
 
-  if (mails.length === 0) {
-    return (
-      <div className="text-center py-12 text-gray-500">
-        <div className="text-6xl mb-4">📭</div>
-        <p className="text-lg">Aucun courrier trouvé</p>
-        <p className="text-sm mt-2">Commencez par ajouter un nouveau courrier</p>
-      </div>
-    );
-  }
+  const truncateText = (text, maxLength = 50) => {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+  
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th 
-                className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('objet')}
-              >
-                Objet {sortBy === 'objet' && (sortOrder === 'asc' ? '↑' : '↓')}
-              </th>
-              <th 
-                className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('expediteur')}
-              >
-                Expéditeur {sortBy === 'expediteur' && (sortOrder === 'asc' ? '↑' : '↓')}
-              </th>
-              <th 
-                className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('dateReception')}
-              >
-                Date {sortBy === 'dateReception' && (sortOrder === 'asc' ? '↑' : '↓')}
-              </th>
-              <th 
-                className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('statut')}
-              >
-                Statut {sortBy === 'statut' && (sortOrder === 'asc' ? '↑' : '↓')}
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {sortedMails.map((mail) => (
-              <tr 
-                key={mail.id}
-                data-courrier-id={mail.id}
-                className={`hover:bg-gray-50 transition-colors ${
-                  mail.id === lastAddedId ? 'bg-green-50' : ''
-                }`}
-              >
-                <td className="px-4 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
-                    {mail.objet || 'Sans objet'}
-                  </div>
-                  {mail.description && (
-                    <div className="text-sm text-gray-500 truncate max-w-xs">
-                      {mail.description}
-                    </div>
-                  )}
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    {mail.expediteur || '-'}
-                  </div>
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {formatDate(mail.dateReception || mail.dateCreation)}
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap">
-                  <select
-                    value={mail.statut || 'En attente'}
-                    onChange={(e) => handleStatusChange(mail.id, e.target.value)}
-                    className="text-xs px-2 py-1 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="En attente">En attente</option>
-                    <option value="En cours">En cours</option>
-                    <option value="Traité">Traité</option>
-                    <option value="Archivé">Archivé</option>
-                  </select>
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => onView(mail)}
-                      className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
-                      title="Voir les détails"
-                    >
-                      👁️
-                    </button>
-                    <button
-                      onClick={() => onEdit(mail)}
-                      className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
-                      title="Modifier"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => onRemove(mail.id)}
-                      className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                      title="Supprimer"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </td>
+    <div className="w-full h-full flex flex-col space-y-4">
+
+      {/* Tableau principal - Version Desktop */}
+      <div className="hidden md:block flex-1 border-2 border-gray-700 rounded-lg overflow-hidden shadow-lg">
+        <div className="h-full overflow-auto">
+          <table className="w-full border-collapse">
+            <thead className="sticky top-0 bg-[#FCFCFC]">
+              <tr>
+                <th className="px-4 py-3 text-left w-[12%] border-b-2 border-r border-gray-300 text-gray-800 font-semibold">N° d'enregistrement</th>
+                <th 
+                  className="px-4 py-3 text-left w-[12%] border-b-2 border-r border-gray-300 cursor-pointer hover:text-primary transition-colors text-gray-800 font-semibold"
+                  onClick={() => handleSort('date')}
+                >
+                  Date d'arrivée {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  className="px-4 py-3 text-left w-[18%] border-b-2 border-r border-gray-300 cursor-pointer hover:text-primary transition-colors text-gray-800 font-semibold"
+                  onClick={() => handleSort('expediteur')}
+                >
+                  Expéditeur {sortBy === 'expediteur' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  className="px-4 py-3 text-left w-[18%] border-b-2 border-r border-gray-300 cursor-pointer hover:text-primary transition-colors text-gray-800 font-semibold"
+                  onClick={() => handleSort('destinataire')}
+                >
+                  Destinataire {sortBy === 'destinataire' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  className="px-4 py-3 text-left flex-1 min-w-[200px] border-b-2 border-r border-gray-300 cursor-pointer hover:text-primary transition-colors text-gray-800 font-semibold"
+                  onClick={() => handleSort('objet')}
+                >
+                  Objet {sortBy === 'objet' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="px-4 py-3 text-left w-[12%] border-b-2 border-r border-gray-300 text-gray-800 font-semibold">Canal</th>
+                <th 
+                  className="px-4 py-3 text-left w-[12%] border-b-2 border-r border-gray-300 cursor-pointer hover:text-primary transition-colors text-gray-800 font-semibold"
+                  onClick={() => handleSort('statut')}
+                >
+                  Statut {sortBy === 'statut' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="px-4 py-3 text-left w-[16%] border-b-2 border-gray-300 text-gray-800 font-semibold">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {pagedMails.length > 0 ? (
+                pagedMails.map((mail) => {
+                  const objetText = safeString(mail.objet || mail.subject);
+                  const isExpanded = expandedObjects.has(mail.id);
+                  const shouldTruncate = objetText.length > 15;
+
+                  return (
+                    <tr key={mail.id} className="hover:bg-gray-800/30 border-b border-gray-700">
+                      <td className="px-4 py-3 whitespace-nowrap border-r border-gray-600">{safeString(mail.numero)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap border-r border-gray-600">{formatDate(mail.date)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px] border-r border-gray-600">{safeString(mail.expediteur || mail.sender)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px] border-r border-gray-600">{safeString(mail.destinataire || mail.recipient)}</td>
+                      <td className="px-4 py-3 border-r border-gray-600">
+                        <div className="flex items-center gap-1 flex-1 min-w-0">
+                          {shouldTruncate ? (
+                            <div className="flex items-center gap-1 w-full">
+                              <span className={`${isExpanded ? 'break-words' : 'whitespace-nowrap overflow-hidden'}`}>
+                                {isExpanded ? objetText : truncateText(objetText, 15)}
+                              </span>
+                              <button
+                                onClick={() => toggleObjectExpansion(mail.id)}
+                                className="text-primary hover:text-primary-dark transition-colors flex-shrink-0 text-xs font-bold"
+                                title={isExpanded ? "Réduire" : "Voir plus"}
+                              >
+                                {isExpanded ? '[-]' : '[...]'}
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="whitespace-nowrap overflow-hidden">
+                              {objetText}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap border-r border-gray-600">{safeString(mail.canal || mail.channel)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap border-r border-gray-600">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusClass(mail.statut || mail.status)}`}>
+                          <FiCircle className="mr-1.5 h-2 w-2" />
+                          {safeString(mail.statut || mail.status)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-center gap-1">
+                          <button 
+                            onClick={() => onView?.(mail)}
+                            className="p-1.5 hover:bg-gray-700/50 rounded transition"
+                            title="Voir"
+                          >
+                            <FiEye className="w-4 h-4 text-blue-400" />
+                          </button>
+                          <button
+                            onClick={() => onEdit?.(mail)}
+                            className="p-1.5 hover:bg-gray-700/50 rounded transition"
+                            title="Éditer"
+                          >
+                            <FiEdit2 className="w-4 h-4 text-yellow-400" />
+                          </button>
+                          {onRemove && (
+                            <button
+                              onClick={() => onRemove(mail.id)}
+                              className="p-1.5 hover:bg-gray-700/50 rounded transition"
+                              title="Supprimer"
+                            >
+                              <FiTrash2 className="w-4 h-4 text-red-400" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={8} className="text-center py-16 border-r border-gray-600">
+                    <div className="flex flex-col items-center justify-center gap-4 text-gray-400">
+                      <FiInbox className="w-12 h-12 text-primary animate-pulse" />
+                      <p className="text-lg font-medium">Aucun courrier trouvé</p>
+                      <button
+                        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                        className="mt-2 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition"
+                      >
+                        Ajouter un courrier
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {/* Version Mobile */}
+      <div className="md:hidden space-y-3">
+        {pagedMails.length > 0 ? (
+          pagedMails.map((mail) => {
+            const objetText = safeString(mail.objet || mail.subject);
+            const isExpanded = expandedObjects.has(mail.id);
+            const shouldTruncate = objetText.length > 15; // Limite pour mobile
+
+            return (
+              <div key={mail.id} className="border-2 border-gray-700 p-4 rounded-lg bg-gray-800/50">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-1 flex-1 min-w-0">
+                    {shouldTruncate ? (
+                      <div className="flex items-center gap-1 w-full min-w-0">
+                        <span className={`font-medium ${isExpanded ? 'break-words' : 'whitespace-nowrap overflow-hidden'}`}>
+                          {isExpanded ? objetText : truncateText(objetText, 15)}
+                        </span>
+                        <button
+                          onClick={() => toggleObjectExpansion(mail.id)}
+                          className="text-primary hover:text-primary-dark transition-colors flex-shrink-0 text-xs font-bold"
+                          title={isExpanded ? "Réduire" : "Voir plus"}
+                        >
+                          {isExpanded ? '[-]' : '[...]'}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="font-medium whitespace-nowrap overflow-hidden">
+                        {objetText}
+                      </span>
+                    )}
+                  </div>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${getStatusClass(mail.statut || mail.status)}`}>
+                    {safeString(mail.statut || mail.status)}
+                  </span>
+                </div>
+
+              <div className="grid grid-cols-2 gap-2 text-sm mt-3">
+                <div>
+                  <p className="text-gray-400">Expéditeur</p>
+                  <p className="truncate">{safeString(mail.expediteur || mail.sender)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Date</p>
+                  <p>{formatDate(mail.date)}</p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 mt-3">
+                <button onClick={() => onView?.(mail)} className="p-1.5 text-blue-400">
+                  <FiEye className="w-4 h-4" />
+                </button>
+                <button onClick={() => onEdit?.(mail)} className="p-1.5 text-yellow-400">
+                  <FiEdit2 className="w-4 h-4" />
+                </button>
+                {onRemove && (
+                  <button onClick={() => onRemove(mail.id)} className="p-1.5 text-red-400">
+                    <FiTrash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+            );
+          })
+        ) : (
+          <div className="text-center py-8 text-gray-400">
+            <FiInbox className="w-12 h-12 mx-auto text-primary mb-4" />
+            <p className="text-lg font-medium">Aucun courrier trouvé</p>
+          </div>
+        )}
+      </div>
+
+      {/* Pagination */}
+      {sortedMails.length > 0 && (
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-4">
+          <div className="text-sm text-gray-400">
+            {pageSize * (page - 1) + 1}-{Math.min(page * pageSize, sortedMails.length)} sur {sortedMails.length}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 border border-gray-700 rounded-lg disabled:opacity-50 hover:bg-gray-800 transition"
+            >
+              Précédent
+            </button>
+            <span className="px-4 py-2 text-sm">
+              Page {page} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-4 py-2 border border-gray-700 rounded-lg disabled:opacity-50 hover:bg-gray-800 transition"
+            >
+              Suivant
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
