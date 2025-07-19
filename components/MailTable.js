@@ -177,7 +177,6 @@ export default function MailTable({
           </tbody>
         </table>
       </div>
-    }
     </div>
   );
 }
