@@ -229,6 +229,49 @@ export function MailModalDetail({ mail, onClose, onStatusUpdate }) {
 }
 
 export default function MailModal({ mail, onClose, onStatusUpdate }) {
+  const [currentStatus, setCurrentStatus] = useState(mail?.statut || '');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const { addToast } = useToast();
+
+  if (!mail) return null;
+
+  const statusOptions = ['En attente', 'En cours', 'Traité', 'Archivé'];
+
+  const handleStatusChange = async (e) => {
+    const newStatus = e.target.value;
+    if (newStatus === currentStatus) return;
+    
+    setIsUpdating(true);
+    try {
+      if (onStatusUpdate) {
+        await onStatusUpdate(mail.id, newStatus);
+        setCurrentStatus(newStatus);
+        addToast(`Statut mis à jour : ${newStatus}`, 'success');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du statut:', error);
+      addToast('Erreur lors de la mise à jour du statut', 'error');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Non spécifiée';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('fr-FR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return 'Date invalide';
+    }
+  };
+
   return (
     <MailModalDetail 
       mail={mail} 
@@ -237,6 +280,54 @@ export default function MailModal({ mail, onClose, onStatusUpdate }) {
     />
   );
 }
+
+function MailModalForm({ mail, onClose, onStatusUpdate }) {
+  const [currentStatus, setCurrentStatus] = useState(mail?.statut || '');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const { addToast } = useToast();
+
+  if (!mail) return null;
+
+  const statusOptions = ['En attente', 'En cours', 'Traité', 'Archivé'];
+
+  const handleStatusChange = async (e) => {
+    const newStatus = e.target.value;
+    if (newStatus === currentStatus) return;
+    
+    setIsUpdating(true);
+    try {
+      if (onStatusUpdate) {
+        await onStatusUpdate(mail.id, newStatus);
+        setCurrentStatus(newStatus);
+        addToast(`Statut mis à jour : ${newStatus}`, 'success');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du statut:', error);
+      addToast('Erreur lors de la mise à jour du statut', 'error');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Non spécifiée';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('fr-FR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return 'Date invalide';
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative p-6">
         <button
           onClick={onClose}
           className="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-700/50 transition"
