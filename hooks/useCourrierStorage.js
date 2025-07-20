@@ -30,17 +30,21 @@ export function useCourrierStorage(type) {
 
   const generateAutoNumber = (existingCourriers) => {
     try {
+      const prefix = type === 'ARRIVE' ? 'ARR' : 'DEP';
       const existingNumbers = existingCourriers
         .map(c => c.numero)
-        .filter(n => n && n.match(/^\d{5}$/))
-        .map(n => parseInt(n))
+        .filter(n => n && n.startsWith(prefix + '-'))
+        .map(n => n.replace(prefix + '-', ''))
+        .filter(n => n.match(/^\d{5}$/))
+        .map(n => parseInt(n, 10))
         .filter(n => !isNaN(n));
 
       const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
-      return String(nextNumber).padStart(5, '0');
+      return `${prefix}-${String(nextNumber).padStart(5, '0')}`;
     } catch (error) {
       console.error('Erreur génération numéro:', error);
-      return '00001';
+      const prefix = type === 'ARRIVE' ? 'ARR' : 'DEP';
+      return `${prefix}-00001`;
     }
   };
 

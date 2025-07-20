@@ -1,205 +1,242 @@
-import { useForm, Controller } from 'react-hook-form';
-import { z } from 'zod';
-import FileUpload from './FileUpload';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { useToast } from './ToastContainer';
 
-const PARTENAIRES = [
-  "Ministère de l'Intérieur",
-  "Préfecture de Paris",
-  "Ville de Lyon",
-  "Association X",
+const STATUTS = [
+  { value: 'En attente', label: 'En attente', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  { value: 'En cours', label: 'En cours', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+  { value: 'Traité', label: 'Traité', color: 'bg-green-100 text-green-800 border-green-200' },
+  { value: 'Archivé', label: 'Archivé', color: 'bg-gray-100 text-gray-800 border-gray-200' }
 ];
-const DESTINATAIRES = [
-  "Service RH",
-  "Direction Générale",
-  "Service Technique",
-  "M. Dupont",
-];
-const schema = z.object({
-  numero: z.string(),
-  date: z.string().min(1, { message: 'Date requise' }),
-  time: z.string().min(1, { message: 'Heure requise' }),
-  expediteur: z.string().min(1, { message: 'Expéditeur requis' }),
-  objet: z.string().min(2, { message: 'Objet requis' }),
-  canal: z.string().min(1),
-  fichiers: z.any().optional(),
-  destinataire: z.string().min(1, { message: 'Destinataire requis' }),
-  statut: z.string().min(1),
-  planif: z.string().optional(),
-  delai: z.string().optional(),
-});
 
-export function MailModalForm({ mail, onClose, onSave }) {
-  const [numero, setNumero] = useState(mail?.numero || 'ARR-' + Date.now().toString().slice(-6));
-  const { register, handleSubmit, control, formState: { errors }, setValue, watch, reset } = useForm({
-    resolver: zodResolver(schema),
-    defaultValues: mail || {
-      numero,
-      date: '',
-      time: '',
-      expediteur: '',
-      objet: '',
-      canal: 'Physique',
-      fichiers: [],
-      destinataire: '',
-      statut: 'En attente',
-      planif: '',
-      delai: '',
-    },
-  });
-  useEffect(() => { setValue('numero', numero); }, [numero, setValue]);
-  const fichiers = watch('fichiers') || [];
-  const submit = (data) => {
-    onSave({ ...mail, ...data, fichiers });
-    setNumero('ARR-' + (Date.now() + 1).toString().slice(-6));
-    reset();
-  };
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-label="Formulaire courrier arrivé">
-      <div className="bg-gray-900 dark:bg-surface p-6 rounded-2xl shadow-2xl w-full max-w-full sm:max-w-lg relative flex flex-col overflow-y-visible pb-32 border border-gray-700">
-        <button onClick={onClose} className="absolute top-2 right-2 text-gray-400 hover:text-white text-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70" aria-label="Fermer le formulaire" tabIndex={0}>✕</button>
-        <h2 className="text-2xl font-bold mb-4 text-primary" id="mail-modal-title">{mail ? 'Éditer' : 'Ajouter'} un courrier arrivé</h2>
-        <form onSubmit={handleSubmit(submit)} className="space-y-4 flex-1 flex flex-col" aria-labelledby="mail-modal-title">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="numero" className="block mb-1 text-sm">N° d&apos;enregistrement</label>
-              <input id="numero" {...register('numero')} value={numero} disabled className="w-full bg-muted/30 text-gray-100 rounded px-3 py-2" aria-readonly="true" />
-            </div>
-            <div>
-              <label htmlFor="date" className="block mb-1 text-sm">Date de réception</label>
-              <input id="date" type="date" {...register('date')} className="w-full bg-muted/30 text-gray-100 rounded px-3 py-2" aria-required="true" />
-              {errors.date && <p className="text-red-400 text-xs mt-1" role="alert">{errors.date.message}</p>}
-              }
-            </div>
-            <div>
-              <label htmlFor="time" className="block mb-1 text-sm">Heure</label>
-              <input id="time" type="time" {...register('time')} className="w-full bg-muted/30 text-gray-100 rounded px-3 py-2" aria-required="true" />
-              {errors.time && <p className="text-red-400 text-xs mt-1" role="alert">{errors.time.message}</p>}
-              }
-            </div>
-            <div>
-              <label htmlFor="expediteur" className="block mb-1 text-sm">Expéditeur (Partenaire)</label>
-              <select id="expediteur" {...register('expediteur')} className="w-full bg-muted/30 text-gray-100 rounded px-3 py-2" aria-required="true">
-                <option value="">Sélectionner</option>
-                {PARTENAIRES.map(p => <option key={p}>{p}</option>)}
-                )
-                }
-              </select>
-              {errors.expediteur && <p className="text-red-400 text-xs mt-1" role="alert">{errors.expediteur.message}</p>}
-              }
-            </div>
-            <div className="md:col-span-2">
-              <label htmlFor="objet" className="block mb-1 text-sm">Objet du courrier</label>
-              <input id="objet" {...register('objet')} className="w-full bg-muted/30 text-gray-100 rounded px-3 py-2" aria-required="true" />
-              {errors.objet && <p className="text-red-400 text-xs mt-1" role="alert">{errors.objet.message}</p>}
-              }
-            </div>
-            <div>
-              <label htmlFor="canal" className="block mb-1 text-sm">Canal de réception</label>
-              <select id="canal" {...register('canal')} className="w-full bg-muted/30 text-gray-100 rounded px-3 py-2">
-                <option>Physique</option>
-                <option>E-mail</option>
-                <option>En ligne</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="fichiers" className="block mb-1 text-sm">Pièces jointes</label>
-              <Controller
-                control={control}
-                name="fichiers"
-                render={({ field: { onChange } }) => (
-                  <FileUpload onFiles={onChange} files={fichiers} aria-label="Pièces jointes" id="fichiers" />
-                )}
-              />
-            </div>
-            <div>
-              <label htmlFor="destinataire" className="block mb-1 text-sm">Service ou Personne destinataire</label>
-              <select id="destinataire" {...register('destinataire')} className="w-full bg-muted/30 text-gray-100 rounded px-3 py-2" aria-required="true">
-                <option value="">Sélectionner</option>
-                {DESTINATAIRES.map(d => <option key={d}>{d}</option>)}
-                )
-                }
-              </select>
-              {errors.destinataire && <p className="text-red-400 text-xs mt-1" role="alert">{errors.destinataire.message}</p>}
-              }
-            </div>
-            <div>
-              <label htmlFor="statut" className="block mb-1 text-sm">Statut de traitement</label>
-              <select id="statut" {...register('statut')} className="w-full bg-muted/30 text-gray-100 rounded px-3 py-2">
-                <option>En attente</option>
-                <option>En cours</option>
-                <option>Terminé</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="planif" className="block mb-1 text-sm">Planification d&apos;envoi</label>
-              <input id="planif" type="datetime-local" {...register('planif')} className="w-full bg-muted/30 text-gray-100 rounded px-3 py-2" />
-            </div>
-            <div>
-              <label htmlFor="delai" className="block mb-1 text-sm">Délai de réponse</label>
-              <input id="delai" type="datetime-local" {...register('delai')} className="w-full bg-muted/30 text-gray-100 rounded px-3 py-2" />
-            </div>
-          </div>
-          <button type="submit" className="mt-4 w-full bg-primary hover:bg-primary/80 text-white font-semibold py-2 rounded-lg transition shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70">{mail ? 'Enregistrer les modifications' : 'Enregistrer'}</button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Modale de visualisation d'un courrier (détail)
- * @param {Object} props
- * @param {Object} props.mail - Données du courrier à afficher
- * @param {Function} props.onClose - Fonction de fermeture
- * @param {Function} props.updateMail - Fonction de mise à jour complète du courrier
- * @param {Function} props.updateStatus - Fonction de mise à jour du statut uniquement
- */
-export function MailModalDetail({ mail, onClose, updateMail, updateStatus }) {
-  const [currentStatus, setCurrentStatus] = useState(mail?.statut || mail?.status || '');
+export function MailModalDetail({ mail, onClose, onStatusUpdate }) {
+  const [currentStatus, setCurrentStatus] = useState(mail?.statut || '');
   const [isUpdating, setIsUpdating] = useState(false);
+  const { addToast } = useToast();
 
   if (!mail) return null;
 
-  const statusOptions = [
-    'En attente',
-    'En cours',
-    'Traité',
-    'Rejeté',
-    'Archivé',
-    'nouveau'
-  ];
-
-  const handleStatusChange = async (e) => {
-    const newStatus = e.target.value;
+  const handleStatusChange = async (newStatus) => {
     if (newStatus === currentStatus) return;
     
     setIsUpdating(true);
     try {
-      if (updateStatus) await updateStatus(mail.id, newStatus);
-      else if (updateMail) await updateMail(mail.id, { ...mail, statut: newStatus });
-      setCurrentStatus(newStatus);
+      if (onStatusUpdate) {
+        await onStatusUpdate(mail.id, newStatus);
+        setCurrentStatus(newStatus);
+        addToast(`Statut mis à jour : ${newStatus}`, 'success');
+      }
     } catch (error) {
       console.error('Erreur lors de la mise à jour du statut:', error);
+      addToast('Erreur lors de la mise à jour du statut', 'error');
     } finally {
       setIsUpdating(false);
     }
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    if (!dateString) return 'Non spécifiée';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('fr-FR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return 'Date invalide';
+    }
+  };
+
+  const getCurrentStatusConfig = () => {
+    return STATUTS.find(s => s.value === currentStatus) || STATUTS[0];
+  };
+
+  const renderFiles = () => {
+    if (!mail.files || mail.files.length === 0) return null;
+    
+    return (
+      <div className="space-y-2">
+        {mail.files.map((file, index) => (
+          <div key={index} className="flex items-center p-3 bg-gray-50 rounded-lg border">
+            <div className="flex-shrink-0 w-8 h-8 bg-[#15514f] rounded-lg flex items-center justify-center mr-3">
+              <span className="text-white text-xs font-bold">📎</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {file.name || 'Fichier sans nom'}
+              </p>
+              {file.size && (
+                <p className="text-xs text-gray-500">
+                  {(file.size / 1024).toFixed(1)} KB
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm transition px-4 pb-20">
-      <div className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto relative animate-fade-in border border-gray-700">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#15514f] rounded-lg flex items-center justify-center">
+                <span className="text-white text-lg">📧</span>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Détails du courrier</h2>
+                <p className="text-sm text-gray-500">{mail.numero}</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label="Fermer"
+            >
+              <XMarkIcon className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          {/* Statut avec modification */}
+          <div className="bg-gray-50 rounded-xl p-4 border-l-4 border-[#15514f]">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-semibold text-gray-700">Statut actuel</label>
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getCurrentStatusConfig().color}`}>
+                {currentStatus}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {STATUTS.map((status) => (
+                <button
+                  key={status.value}
+                  onClick={() => handleStatusChange(status.value)}
+                  disabled={isUpdating || currentStatus === status.value}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                    currentStatus === status.value
+                      ? 'bg-[#15514f] text-white cursor-default'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-[#15514f] hover:text-[#15514f]'
+                  } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isUpdating && currentStatus !== status.value ? (
+                    <div className="w-4 h-4 border-2 border-gray-300 border-t-[#15514f] rounded-full animate-spin"></div>
+                  ) : (
+                    status.label
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Informations principales */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Objet</label>
+                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg border">{mail.objet}</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Expéditeur</label>
+                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg border">{mail.expediteur || 'Non spécifié'}</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Canal</label>
+                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg border">{mail.canal || 'Non spécifié'}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Destinataire</label>
+                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg border">{mail.destinataire || 'Non spécifié'}</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Date de réception</label>
+                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg border">{formatDate(mail.dateReception || mail.date)}</p>
+              </div>
+              
+              {mail.reference && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Référence</label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg border">{mail.reference}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Observations */}
+          {mail.observations && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Observations</label>
+              <div className="bg-gray-50 p-4 rounded-lg border">
+                <p className="text-gray-900 whitespace-pre-wrap">{mail.observations}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Pièces jointes */}
+          {mail.files && mail.files.length > 0 && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Pièces jointes ({mail.files.length})</label>
+              {renderFiles()}
+            </div>
+          )}
+
+          {/* Informations supplémentaires */}
+          <div className="bg-gray-50 rounded-lg p-4 border">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Informations système</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-500">Créé le :</span>
+                <span className="ml-2 text-gray-900">{formatDate(mail.createdAt)}</span>
+              </div>
+              {mail.updatedAt && mail.updatedAt !== mail.createdAt && (
+                <div>
+                  <span className="text-gray-500">Modifié le :</span>
+                  <span className="ml-2 text-gray-900">{formatDate(mail.updatedAt)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 rounded-b-2xl">
+          <div className="flex justify-end">
+            <button
+              onClick={onClose}
+              className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function MailModal({ mail, onClose, onStatusUpdate }) {
+  return (
+    <MailModalDetail 
+      mail={mail} 
+      onClose={onClose} 
+      onStatusUpdate={onStatusUpdate}
+    />
+  );
+}
         <button
           onClick={onClose}
           className="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-700/50 transition"
