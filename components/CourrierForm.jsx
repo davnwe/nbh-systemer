@@ -52,25 +52,30 @@ export default function CourrierForm({ type = 'ARRIVE', onClose, onAddMail, init
   // Génération automatique du numéro
   useEffect(() => {
     if (!initialValues?.numero) {
-      generateAutoNumber();
+      generateAutoNumber(type);
     }
   }, [type, initialValues]);
 
-  const generateAutoNumber = async () => {
+  const generateAutoNumber = async (courrierType) => {
     try {
-      // Générer un numéro séquentiel basé sur les courriers existants
-      const existingCourriers = JSON.parse(localStorage.getItem(type === 'ARRIVE' ? 'courriers-arrive' : 'courriers-depart') || '[]');
+      const prefix = courrierType === 'ARRIVE' ? 'ARR' : 'DEP';
+      const storageKey = courrierType === 'ARRIVE' ? 'courriers-arrive' : 'courriers-depart';
+      const existingCourriers = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      
       const existingNumbers = existingCourriers
         .map(c => c.numero)
-        .filter(n => n && n.match(/^\d{5}$/))
-        .map(n => parseInt(n))
+        .filter(n => n && n.startsWith(prefix + '-'))
+        .map(n => n.replace(prefix + '-', ''))
+        .filter(n => n.match(/^\d{5}$/))
+        .map(n => parseInt(n, 10))
         .filter(n => !isNaN(n));
 
       const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
-      setNumero(String(nextNumber).padStart(5, '0'));
+      setNumero(`${prefix}-${String(nextNumber).padStart(5, '0')}`);
     } catch (error) {
       console.error('Erreur génération numéro:', error);
-      setNumero('00001');
+      const prefix = courrierType === 'ARRIVE' ? 'ARR' : 'DEP';
+      setNumero(`${prefix}-00001`);
     }
   };
 
