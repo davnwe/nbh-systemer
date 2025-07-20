@@ -11,8 +11,8 @@ export default async function handler(req, res) {
   // Création du transporteur SMTP Gmail (avec variables d'env)
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || "smtp.gmail.com",
-    port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
-    secure: false, // true pour le port 465, false pour 587
+    port: 465,
+    secure: true, // true pour le port 465, false pour 587
     auth: {
       user: process.env.SMTP_USER || process.env.GMAIL_USER,
       pass: process.env.SMTP_PASS || process.env.GMAIL_PASS,
