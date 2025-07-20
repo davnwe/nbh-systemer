@@ -58,10 +58,6 @@ export default function CourrierDepart() {
   };
 
   const handleView = (mail) => {
-    // Empêcher toute navigation
-    if (typeof window !== 'undefined') {
-      window.history.replaceState(null, '', window.location.pathname);
-    }
     setSelectedMail(mail);
     setModalType('view');
   };
@@ -181,8 +177,10 @@ export default function CourrierDepart() {
 
       {/* Modal vue */}
       {modalType === 'view' && selectedMail && (
-        <CourrierDetailModal 
+        <MailModalDetail 
           courrier={selectedMail} 
+          mail={selectedMail}
+          isOpen={true}
           onClose={handleCloseModal}
           onStatusUpdate={handleStatusUpdate}
           type="DEPART"

@@ -9,12 +9,12 @@ const STATUTS = [
   { value: 'Archivé', label: 'Archivé', color: 'bg-gray-100 text-gray-800 border-gray-200' }
 ];
 
-export function MailModalDetail({ mail, onClose, onStatusUpdate }) {
+export function MailModalDetail({ mail, onClose, onStatusUpdate, isOpen = true }) {
   const [currentStatus, setCurrentStatus] = useState(mail?.statut || '');
   const [isUpdating, setIsUpdating] = useState(false);
   const { addToast } = useToast();
 
-  if (!mail) return null;
+  if (!isOpen || !mail) return null;
 
   const handleStatusChange = async (newStatus) => {
     if (newStatus === currentStatus) return;
@@ -228,53 +228,13 @@ export function MailModalDetail({ mail, onClose, onStatusUpdate }) {
   );
 }
 
+import { MailModalDetail } from './MailModal';
+
 export default function MailModal({ mail, onClose, onStatusUpdate }) {
-  const [currentStatus, setCurrentStatus] = useState(mail?.statut || '');
-  const [isUpdating, setIsUpdating] = useState(false);
-  const { addToast } = useToast();
-
-  if (!mail) return null;
-
-  const statusOptions = ['En attente', 'En cours', 'Traité', 'Archivé'];
-
-  const handleStatusChange = async (e) => {
-    const newStatus = e.target.value;
-    if (newStatus === currentStatus) return;
-    
-    setIsUpdating(true);
-    try {
-      if (onStatusUpdate) {
-        await onStatusUpdate(mail.id, newStatus);
-        setCurrentStatus(newStatus);
-        addToast(`Statut mis à jour : ${newStatus}`, 'success');
-      }
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour du statut:', error);
-      addToast('Erreur lors de la mise à jour du statut', 'error');
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Non spécifiée';
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('fr-FR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch {
-      return 'Date invalide';
-    }
-  };
-
   return (
     <MailModalDetail 
       mail={mail} 
+      isOpen={true}
       onClose={onClose} 
       onStatusUpdate={onStatusUpdate}
     />
