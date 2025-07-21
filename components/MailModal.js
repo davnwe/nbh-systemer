@@ -24,11 +24,11 @@ export function MailModalDetail({ mail, onClose, onStatusUpdate, isOpen = true }
       if (onStatusUpdate) {
         await onStatusUpdate(mail.id, newStatus);
         setCurrentStatus(newStatus);
-        addToast(`Statut mis à jour : ${newStatus}`, 'success');
+        addToast(`✅ Statut mis à jour : ${newStatus}`, 'success');
       }
     } catch (error) {
       console.error('Erreur lors de la mise à jour du statut:', error);
-      addToast('Erreur lors de la mise à jour du statut', 'error');
+      addToast('❌ Erreur lors de la mise à jour du statut', 'error');
     } finally {
       setIsUpdating(false);
     }
@@ -57,16 +57,28 @@ export function MailModalDetail({ mail, onClose, onStatusUpdate, isOpen = true }
   const renderFiles = () => {
     if (!mail.files || mail.files.length === 0) return null;
     
+    let parsedFiles = [];
+    try {
+      if (typeof mail.files === 'string') {
+        parsedFiles = JSON.parse(mail.files);
+      } else if (Array.isArray(mail.files)) {
+        parsedFiles = mail.files;
+      }
+    } catch (error) {
+      console.error('Erreur parsing fichiers:', error);
+      return null;
+    }
+    
     return (
       <div className="space-y-2">
-        {mail.files.map((file, index) => (
+        {parsedFiles.map((file, index) => (
           <div key={index} className="flex items-center p-3 bg-gray-50 rounded-lg border">
             <div className="flex-shrink-0 w-8 h-8 bg-[#15514f] rounded-lg flex items-center justify-center mr-3">
               <span className="text-white text-xs font-bold">📎</span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">
-                {file.name || 'Fichier sans nom'}
+                {file.name || file.originalFilename || 'Fichier sans nom'}
               </p>
               {file.size && (
                 <p className="text-xs text-gray-500">
@@ -176,6 +188,16 @@ export function MailModalDetail({ mail, onClose, onStatusUpdate, isOpen = true }
             </div>
           </div>
 
+          {/* Délai */}
+          {mail.delai && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Délai de réponse</label>
+              <div className="bg-gray-50 p-4 rounded-lg border">
+                <p className="text-gray-900">{mail.delai}</p>
+              </div>
+            </div>
+          )}
+
           {/* Observations */}
           {mail.observations && (
             <div>
@@ -187,9 +209,9 @@ export function MailModalDetail({ mail, onClose, onStatusUpdate, isOpen = true }
           )}
 
           {/* Pièces jointes */}
-          {mail.files && mail.files.length > 0 && (
+          {mail.files && (
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Pièces jointes ({mail.files.length})</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Pièces jointes</label>
               {renderFiles()}
             </div>
           )}
@@ -198,6 +220,10 @@ export function MailModalDetail({ mail, onClose, onStatusUpdate, isOpen = true }
           <div className="bg-gray-50 rounded-lg p-4 border">
             <h3 className="text-sm font-semibold text-gray-700 mb-3">Informations système</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-500">Type :</span>
+                <span className="ml-2 text-gray-900">{mail.type || 'ARRIVE'}</span>
+              </div>
               <div>
                 <span className="text-gray-500">Créé le :</span>
                 <span className="ml-2 text-gray-900">{formatDate(mail.createdAt)}</span>

@@ -105,6 +105,13 @@ export function useCourrierStorage(type) {
       const updatedCourriers = courriers.filter(c => c.id !== id);
       setCourriers(updatedCourriers);
       saveCourriers(updatedCourriers);
+      
+      // Déclencher l'événement de synchronisation
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('courriersUpdated', { 
+          detail: { type, action: 'delete', id } 
+        }));
+      }
     } catch (error) {
       console.error('Erreur lors de la suppression du courrier:', error);
       throw error;

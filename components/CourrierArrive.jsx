@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useCourrierStorage } from '../hooks/useCourrierStorage';
 import CourrierForm from './CourrierForm.jsx';
 import MailTable from './MailTable';
-import CourrierDetailModal from './CourrierDetailModal';
+import MailModal from './MailModal';
 import { useToast } from './ToastContainer';
 
 export default function CourrierArrive() {
@@ -94,7 +94,7 @@ export default function CourrierArrive() {
   const handleUpdateMail = (updatedMail) => {
     try {
       // Mise à jour via le hook de stockage
-      const updated = updateCourrier(updatedMail.id, updatedMail);
+      const updated = updateStatus(updatedMail.id, updatedMail.statut);
       if (updated) {
         addToast('✏️ Courrier modifié avec succès', 'success');
         handleCloseModal();

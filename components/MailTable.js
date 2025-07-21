@@ -26,9 +26,18 @@ function safeString(val) {
 
 function getStatusClass(status) {
   const str = safeString(status);
-  return typeof str === 'string' && STATUS_COLORS[str.toLowerCase()]
-    ? STATUS_COLORS[str.toLowerCase()]
-    : 'bg-gray-700 text-gray-200';
+  const normalizedStatus = str.toLowerCase().trim();
+  
+  // Mapping plus flexible pour les statuts
+  const statusMap = {
+    'en attente': 'bg-yellow-500/20 text-yellow-400',
+    'en cours': 'bg-blue-500/20 text-blue-400', 
+    'traité': 'bg-green-500/20 text-green-400',
+    'archivé': 'bg-gray-500/20 text-gray-300',
+    'nouveau': 'bg-blue-500/20 text-blue-400'
+  };
+  
+  return statusMap[normalizedStatus] || 'bg-gray-500/20 text-gray-300';
 }
 
 export default function MailTable({ 
@@ -43,6 +52,19 @@ export default function MailTable({
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
   const [expandedObjects, setExpandedObjects] = useState(new Set());
+  
+  // Écouter les mises à jour des courriers pour rafraîchir l'affichage
+  useEffect(() => {
+    const handleCourriersUpdate = () => {
+      // Forcer un re-render du composant
+      setExpandedObjects(new Set(expandedObjects));
+    };
+    
+    if (typeof window !== 'undefined') {
+      window.addEventListener('courriersUpdated', handleCourriersUpdate);
+      return () => window.removeEventListener('courriersUpdated', handleCourriersUpdate);
+    }
+  }, [expandedObjects]);
 
   const filteredMails = useMemo(() => {
     if (!search) return mails;
@@ -168,7 +190,13 @@ export default function MailTable({
                   const shouldTruncate = objetText.length > 15;
 
                   return (
-                    <tr key={mail.id} className="hover:bg-gray-800/30 border-b border-gray-700">
+                    <tr 
+                      key={mail.id} 
+                      className={`hover:bg-gray-100 border-b border-gray-200 transition-colors ${
+                        lastAddedId === mail.id ? 'bg-green-50 animate-pulse' : ''
+                      }`}
+                      data-courrier-id={mail.id}
+                    >
                       <td className="px-4 py-3 whitespace-nowrap border-r border-gray-600">{safeString(mail.numero)}</td>
                       <td className="px-4 py-3 whitespace-nowrap border-r border-gray-600">{formatDate(mail.date)}</td>
                       <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px] border-r border-gray-600">{safeString(mail.expediteur || mail.sender)}</td>
@@ -206,14 +234,14 @@ export default function MailTable({
                         <div className="flex justify-center gap-1">
                           <button 
                             onClick={() => onView?.(mail)}
-                            className="p-1.5 hover:bg-gray-700/50 rounded transition"
+                            className="p-1.5 hover:bg-blue-100 rounded transition-colors"
                             title="Voir"
                           >
                             <FiEye className="w-4 h-4 text-blue-400" />
                           </button>
                           <button
                             onClick={() => onEdit?.(mail)}
-                            className="p-1.5 hover:bg-gray-700/50 rounded transition"
+                            className="p-1.5 hover:bg-yellow-100 rounded transition-colors"
                             title="Éditer"
                           >
                             <FiEdit2 className="w-4 h-4 text-yellow-400" />
@@ -221,7 +249,7 @@ export default function MailTable({
                           {onRemove && (
                             <button
                               onClick={() => onRemove(mail.id)}
-                              className="p-1.5 hover:bg-gray-700/50 rounded transition"
+                              className="p-1.5 hover:bg-red-100 rounded transition-colors"
                               title="Supprimer"
                             >
                               <FiTrash2 className="w-4 h-4 text-red-400" />
@@ -262,7 +290,13 @@ export default function MailTable({
             const shouldTruncate = objetText.length > 15; // Limite pour mobile
 
             return (
-              <div key={mail.id} className="border-2 border-gray-700 p-4 rounded-lg bg-gray-800/50">
+              <div 
+                key={mail.id} 
+                className={`border border-gray-200 p-4 rounded-lg bg-white shadow-sm ${
+                  lastAddedId === mail.id ? 'bg-green-50 animate-pulse' : ''
+                }`}
+                data-courrier-id={mail.id}
+              >
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-1 flex-1 min-w-0">
                     {shouldTruncate ? (
@@ -291,24 +325,36 @@ export default function MailTable({
 
               <div className="grid grid-cols-2 gap-2 text-sm mt-3">
                 <div>
-                  <p className="text-gray-400">Expéditeur</p>
+                  <p className="text-gray-500">Expéditeur</p>
                   <p className="truncate">{safeString(mail.expediteur || mail.sender)}</p>
                 </div>
                 <div>
-                  <p className="text-gray-400">Date</p>
+                  <p className="text-gray-500">Date</p>
                   <p>{formatDate(mail.date)}</p>
                 </div>
               </div>
 
               <div className="flex justify-end gap-2 mt-3">
-                <button onClick={() => onView?.(mail)} className="p-1.5 text-blue-400">
+                <button 
+                  onClick={() => onView?.(mail)} 
+                  className="p-1.5 text-blue-400 hover:bg-blue-100 rounded transition-colors"
+                  title="Voir"
+                >
                   <FiEye className="w-4 h-4" />
                 </button>
-                <button onClick={() => onEdit?.(mail)} className="p-1.5 text-yellow-400">
+                <button 
+                  onClick={() => onEdit?.(mail)} 
+                  className="p-1.5 text-yellow-400 hover:bg-yellow-100 rounded transition-colors"
+                  title="Éditer"
+                >
                   <FiEdit2 className="w-4 h-4" />
                 </button>
                 {onRemove && (
-                  <button onClick={() => onRemove(mail.id)} className="p-1.5 text-red-400">
+                  <button 
+                    onClick={() => onRemove(mail.id)} 
+                    className="p-1.5 text-red-400 hover:bg-red-100 rounded transition-colors"
+                    title="Supprimer"
+                  >
                     <FiTrash2 className="w-4 h-4" />
                   </button>
                 )}
