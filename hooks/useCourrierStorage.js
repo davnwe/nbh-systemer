@@ -84,6 +84,11 @@ export function useCourrierStorage(type) {
 
   const updateStatus = (id, newStatus) => {
     try {
+      // Empêcher toute navigation pendant la mise à jour
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+      
       const updatedCourrier = updateCourrier(id, { statut: newStatus });
       
       // Déclencher l'événement de synchronisation
@@ -91,6 +96,11 @@ export function useCourrierStorage(type) {
         window.dispatchEvent(new CustomEvent('courriersUpdated', { 
           detail: { type, action: 'update', id, data: updatedCourrier } 
         }));
+        
+        // S'assurer qu'on reste sur la même page
+        setTimeout(() => {
+          window.history.replaceState(null, '', window.location.pathname);
+        }, 50);
       }
       
       return updatedCourrier;

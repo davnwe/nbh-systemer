@@ -80,11 +80,23 @@ export default function CourrierArrive() {
 
   const handleStatusUpdate = async (id, newStatus) => {
     try {
+      // Empêcher toute navigation
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+      
       const updatedCourrier = updateStatus(id, newStatus);
       if (updatedCourrier) {
         addToast(`📋 Statut mis à jour : ${newStatus}`, 'success');
         // Forcer la mise à jour de l'affichage sans navigation
         setSelectedMail(prev => prev ? { ...prev, statut: newStatus } : null);
+        
+        // Empêcher toute redirection après la mise à jour
+        setTimeout(() => {
+          if (typeof window !== 'undefined') {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        }, 100);
       }
     } catch (error) {
       addToast('❌ Erreur lors de la mise à jour du statut', 'error');

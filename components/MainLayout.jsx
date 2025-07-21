@@ -12,8 +12,12 @@ export default function MainLayout({ children }) {
   
   // Empêcher les changements de vue non intentionnels
   const handleViewChange = (newView) => {
-    // Vérifier que le changement de vue est intentionnel
-    if (newView && newView !== currentView) {
+    // Empêcher les changements de vue automatiques
+    if (newView && newView !== currentView && typeof newView === 'string') {
+      // S'assurer qu'on reste sur la même URL
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
       setCurrentView(newView);
     }
   };

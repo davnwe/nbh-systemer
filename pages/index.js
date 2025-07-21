@@ -6,20 +6,18 @@ export default function Home() {
   const router = useRouter();
   
   useEffect(() => {
-    // Empêcher les redirections automatiques vers la page d'accueil
-    // sauf si c'est une navigation intentionnelle
-    const handleRouteChange = (url) => {
-      if (url === '/' && router.asPath !== '/') {
-        // Si on essaie de rediriger vers l'accueil depuis une autre page
-        // on annule la redirection
-        router.replace(router.asPath);
+    // Désactiver complètement les redirections automatiques
+    const preventRedirection = (url) => {
+      // Empêcher toute redirection non intentionnelle
+      if (url !== router.asPath && !url.startsWith('/dashboard') && !url.startsWith('/login') && !url.startsWith('/register')) {
+        return false;
       }
     };
     
-    router.events.on('routeChangeStart', handleRouteChange);
+    router.events.on('routeChangeStart', preventRedirection);
     
     return () => {
-      router.events.off('routeChangeStart', handleRouteChange);
+      router.events.off('routeChangeStart', preventRedirection);
     };
   }, [router]);
   

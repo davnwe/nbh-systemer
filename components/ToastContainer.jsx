@@ -10,6 +10,11 @@ export function ToastProvider({ children }) {
     const id = Date.now() + Math.random();
     const newToast = { id, message, type, duration };
     
+    // Empêcher toute navigation lors de l'affichage des toasts
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    
     setToasts(prev => [...prev, newToast]);
     
     // Auto-remove après la durée spécifiée
