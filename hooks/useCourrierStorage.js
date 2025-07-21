@@ -84,7 +84,16 @@ export function useCourrierStorage(type) {
 
   const updateStatus = (id, newStatus) => {
     try {
-      return updateCourrier(id, { statut: newStatus });
+      const updatedCourrier = updateCourrier(id, { statut: newStatus });
+      
+      // Déclencher l'événement de synchronisation
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('courriersUpdated', { 
+          detail: { type, action: 'update', id, data: updatedCourrier } 
+        }));
+      }
+      
+      return updatedCourrier;
     } catch (error) {
       console.error('Erreur lors de la mise à jour du statut:', error);
       throw error;

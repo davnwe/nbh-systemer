@@ -59,6 +59,7 @@ export default function CourrierArrive() {
   };
 
   const handleView = (mail) => {
+    console.log('handleView appelé avec:', mail);
     setSelectedMail(mail);
     setModalType('view');
   };
@@ -178,13 +179,10 @@ export default function CourrierArrive() {
 
       {/* Modal vue */}
       {modalType === 'view' && selectedMail && (
-        <MailModalDetail 
-          courrier={selectedMail} 
+        <MailModal 
           mail={selectedMail}
-          isOpen={true}
           onClose={handleCloseModal}
           onStatusUpdate={handleStatusUpdate}
-          type="ARRIVE"
         />
       )}
 
